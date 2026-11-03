@@ -20,6 +20,10 @@ sentence-transformers runtime; hashing keeps duplicate-detection embeddings
 available without downloading a model or calling an external embedding service.
 It has no safe defaults that can begin real generation.
 
+For a documented transient provider failure, the runner also supports a strict,
+operator-visible retry subset. It requires `--allow-partial-retry`; without it,
+the original exact-ten-category manifest requirement remains enforced.
+
 ### Required command-line arguments
 
 | Argument | Required | Expected value | Default | Purpose |

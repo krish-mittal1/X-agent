@@ -117,13 +117,24 @@ def _pilot_settings() -> tuple[Settings, int]:
     return pilot_settings, max_requests
 
 
-def _load_manifest(path: Path) -> list[Candidate]:
+def _load_manifest(path: Path, *, allow_partial_retry: bool = False) -> list[Candidate]:
     raw = json.loads(path.read_text(encoding="utf-8"))
     candidates = [
         Candidate(str(item["category"]), int(item["source_document_id"]))
         for item in raw["candidates"]
     ]
     categories = tuple(item.category for item in candidates)
+    if allow_partial_retry:
+        if (
+            not candidates
+            or len(candidates) > len(REQUIRED_CATEGORIES)
+            or not set(categories).issubset(REQUIRED_CATEGORIES)
+            or len(set(categories)) != len(candidates)
+        ):
+            raise PilotStopError(
+                "partial retry manifest must contain one or more distinct supported categories"
+            )
+        return candidates
     if len(candidates) != 10 or set(categories) != set(REQUIRED_CATEGORIES) or len(set(categories)) != 10:
         raise PilotStopError("manifest must contain exactly one candidate for each required category")
     return candidates
@@ -198,9 +209,15 @@ async def _result_for_draft(
     }
 
 
-async def run(manifest: Path, report_path: Path, account_handle: str) -> None:
+async def run(
+    manifest: Path,
+    report_path: Path,
+    account_handle: str,
+    *,
+    allow_partial_retry: bool = False,
+) -> None:
     settings, max_requests = _pilot_settings()
-    candidates = _load_manifest(manifest)
+    candidates = _load_manifest(manifest, allow_partial_retry=allow_partial_retry)
     init_engine(settings)
     session_factory = get_session_factory()
     provider = CappedGeminiProvider(settings, max_requests)
@@ -311,8 +328,20 @@ def main() -> None:
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--account-handle", required=True)
+    parser.add_argument(
+        "--allow-partial-retry",
+        action="store_true",
+        help="allow a retry manifest with a strict subset of the ten pilot categories",
+    )
     args = parser.parse_args()
-    asyncio.run(run(args.manifest, args.report, args.account_handle))
+    asyncio.run(
+        run(
+            args.manifest,
+            args.report,
+            args.account_handle,
+            allow_partial_retry=args.allow_partial_retry,
+        )
+    )
 
 
 if __name__ == "__main__":
