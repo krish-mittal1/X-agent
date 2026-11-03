@@ -1,0 +1,2802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>India Pulse | Agent Command Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090b10;
+      --bg-subtle: #0f131c;
+      --surface: #141923;
+      --surface-hover: #19202e;
+      --surface-elevated: #1a2232;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-subtle: rgba(255, 255, 255, 0.04);
+      --border-focus: rgba(99, 102, 241, 0.5);
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --primary-subtle: rgba(99, 102, 241, 0.12);
+      --primary-text: #a5b4fc;
+      --success: #10b981;
+      --success-subtle: rgba(16, 185, 129, 0.12);
+      --success-text: #34d399;
+      --danger: #ef4444;
+      --danger-subtle: rgba(239, 68, 68, 0.12);
+      --danger-text: #f87171;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', Menlo, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 13.5px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    a { color: var(--primary-text); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Top Navigation Bar */
+    .navbar {
+      height: 56px;
+      background: rgba(9, 11, 16, 0.88);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .brand-mark {
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: -0.02em;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-pill {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+    }
+
+    /* Tabs */
+    .nav-tabs {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 3px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .nav-tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-sans);
+      font-size: 12.5px;
+      font-weight: 500;
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .nav-tab-btn:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .nav-tab-btn.active {
+      color: #fff;
+      background: var(--surface-hover);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      font-weight: 600;
+    }
+
+    .tab-counter {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 5px;
+      border-radius: 10px;
+      background: rgba(99, 102, 241, 0.2);
+      color: var(--primary-text);
+      min-width: 18px;
+      text-align: center;
+    }
+
+    /* Right Navigation Meta */
+    .nav-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .meta-stat {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .meta-stat strong {
+      color: var(--text);
+    }
+
+    /* Layout & Container */
+    .main-wrap {
+      max-width: 1240px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px 24px 60px;
+      flex: 1;
+    }
+
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.15s ease;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Page Header */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .page-title {
+      font-size: 17px;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: -0.01em;
+      margin-bottom: 3px;
+    }
+
+    .page-desc {
+      font-size: 12.5px;
+      color: var(--text-dim);
+    }
+
+    /* Cards & Panels */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-family: var(--font-sans);
+      font-size: 12.5px;
+      font-weight: 500;
+      padding: 7px 14px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--border);
+      color: var(--text);
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.09);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .btn-sm {
+      padding: 4px 10px;
+      font-size: 11.5px;
+    }
+
+    .btn-danger-subtle {
+      background: var(--danger-subtle);
+      border-color: rgba(239, 68, 68, 0.25);
+      color: var(--danger-text);
+    }
+    .btn-danger-subtle:hover:not(:disabled) {
+      background: rgba(239, 68, 68, 0.22);
+    }
+
+    .btn-success-subtle {
+      background: var(--success-subtle);
+      border-color: rgba(16, 185, 129, 0.25);
+      color: var(--success-text);
+    }
+    .btn-success-subtle:hover:not(:disabled) {
+      background: rgba(16, 185, 129, 0.22);
+    }
+
+    /* Inputs & Textareas */
+    .input-text, .textarea {
+      width: 100%;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      padding: 10px 12px;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      outline: none;
+    }
+
+    .input-text:focus, .textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+    }
+
+    .textarea {
+      resize: vertical;
+      min-height: 80px;
+      line-height: 1.5;
+    }
+
+    /* Segmented Control */
+    .segmented-control {
+      display: inline-flex;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 2px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+      gap: 2px;
+    }
+
+    .segment-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-sans);
+      font-size: 11.5px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+
+    .segment-btn:hover {
+      color: var(--text);
+    }
+
+    .segment-btn.active {
+      background: var(--surface-hover);
+      color: #fff;
+      font-weight: 600;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      font-family: var(--font-mono);
+    }
+
+    .badge-primary {
+      background: var(--primary-subtle);
+      border-color: rgba(99, 102, 241, 0.25);
+      color: var(--primary-text);
+    }
+
+    .badge-success {
+      background: var(--success-subtle);
+      border-color: rgba(16, 185, 129, 0.25);
+      color: var(--success-text);
+    }
+
+    .badge-muted {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: var(--border);
+      color: var(--text-muted);
+    }
+
+    /* Tweet Cards */
+    .tweet-card {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 14px;
+      transition: border-color 0.15s ease;
+    }
+
+    .tweet-card:hover {
+      border-color: rgba(255, 255, 255, 0.14);
+    }
+
+    .tweet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .tweet-author {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .avatar-sm {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(99, 102, 241, 0.2);
+      color: var(--primary-text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+    }
+
+    .author-name {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .author-handle {
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .tweet-body {
+      font-size: 13.5px;
+      line-height: 1.5;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin-bottom: 12px;
+    }
+
+    .tweet-textarea {
+      width: 100%;
+      min-height: 80px;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 13.5px;
+      line-height: 1.5;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      resize: vertical;
+      outline: none;
+    }
+
+    .tweet-textarea:focus {
+      border-color: var(--primary);
+    }
+
+    .tweet-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 10px;
+      border-top: 1px solid var(--border-subtle);
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .char-meter {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .char-meter.warning { color: var(--warning-text); }
+    .char-meter.danger { color: var(--danger-text); }
+
+    .tweet-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .tweet-rationale {
+      font-size: 11.5px;
+      color: var(--text-dim);
+      margin-top: 8px;
+      line-height: 1.4;
+    }
+
+    /* AI Bar */
+    .ai-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(99, 102, 241, 0.05);
+      border: 1px solid rgba(99, 102, 241, 0.15);
+      border-radius: var(--radius-sm);
+      padding: 6px 10px;
+      margin-bottom: 10px;
+    }
+
+    .ai-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-size: 12px;
+      font-family: var(--font-sans);
+    }
+
+    /* Grid for News Wire */
+    .wire-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 14px;
+    }
+
+    .wire-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.15s ease;
+    }
+
+    .wire-card:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+      background: var(--surface-hover);
+    }
+
+    .wire-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .wire-headline {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.4;
+      margin-bottom: 6px;
+    }
+
+    .wire-excerpt {
+      font-size: 11.5px;
+      color: var(--text-dim);
+      line-height: 1.4;
+      margin-bottom: 12px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .wire-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 8px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    /* Source Picker List */
+    .source-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .source-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 14px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      transition: all 0.12s ease;
+    }
+
+    .source-item:hover {
+      border-color: rgba(255, 255, 255, 0.14);
+    }
+
+    /* Spinners & Utilities */
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .empty-state {
+      padding: 36px 20px;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 13px;
+    }
+
+    /* Toasts */
+    #toastContainer {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    .toast {
+      pointer-events: auto;
+      background: #181d28;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 12.5px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      animation: toastIn 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 380px;
+    }
+
+    .toast.success { border-color: rgba(16, 185, 129, 0.35); }
+    .toast.error { border-color: rgba(239, 68, 68, 0.35); }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <div class="nav-brand">
+      <div class="status-dot"></div>
+      <div class="brand-mark">
+        <span>India Pulse</span>
+        <span class="brand-pill" id="statHandle">@ssh_bugs</span>
+        <span class="brand-pill" id="statModel" style="color: #60a5fa; background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.25);">gemini-2.5-flash</span>
+      </div>
+    </div>
+
+    <!-- Main Navigation Tabs -->
+    <nav class="nav-tabs" style="overflow-x: auto; max-width: 62vw;">
+      <button class="nav-tab-btn active" data-tab="studio" onclick="switchTab('studio')">
+        <span>Studio</span>
+      </button>
+      <button class="nav-tab-btn" data-tab="queue" onclick="switchTab('queue')">
+        <span>Review Queue</span>
+        <span class="tab-counter" id="navQueueBadge">0</span>
+      </button>
+      <button class="nav-tab-btn" data-tab="research" onclick="switchTab('research')">
+        <span>Research Studio</span>
+      </button>
+      <button class="nav-tab-btn" data-tab="events" onclick="switchTab('events')">
+        <span>Event Sagas</span>
+      </button>
+      <button class="nav-tab-btn" data-tab="learning" onclick="switchTab('learning')">
+        <span>Performance DNA</span>
+      </button>
+      <button class="nav-tab-btn" data-tab="replies" onclick="switchTab('replies')">
+        <span>Replies</span>
+      </button>
+      <button class="nav-tab-btn" data-tab="wire" onclick="switchTab('wire')">
+        <span>News Wire</span>
+      </button>
+      <button class="nav-tab-btn" data-tab="published" onclick="switchTab('published')">
+        <span>Published</span>
+      </button>
+    </nav>
+
+    <!-- Meta / Right Status -->
+    <div class="nav-meta">
+      <div class="meta-stat" id="metaIngested">Ingested: <strong id="statIngested">--</strong></div>
+      <div class="meta-stat" id="metaPublished">Published: <strong id="statPublished">--</strong> / <span id="statPacingBudget">24</span></div>
+      <button class="btn btn-secondary btn-sm" onclick="refreshAll(true)" id="btnGlobalRefresh">Refresh</button>
+      <button class="btn btn-secondary btn-sm" onclick="toggleTokenPanel()" style="font-family: var(--font-mono); font-size: 11px;" id="tokenPreview">Key</button>
+    </div>
+  </header>
+
+  <!-- Hidden Token Settings Dropdown -->
+  <div id="tokenPanel" style="display: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px; position: fixed; top: 64px; right: 24px; z-index: 100; width: 340px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
+    <div style="font-size: 12px; font-weight: 600; color: #fff; margin-bottom: 6px;">Admin Authentication Token</div>
+    <div style="font-size: 11px; color: var(--text-dim); margin-bottom: 10px;">Stored locally in your browser for dashboard API requests.</div>
+    <input type="password" id="tokenInput" class="input-text" style="font-family: var(--font-mono); font-size: 11px; margin-bottom: 10px;" placeholder="Paste admin token here...">
+    <div style="display: flex; justify-content: flex-end; gap: 6px;">
+      <button class="btn btn-secondary btn-sm" onclick="toggleTokenPanel()">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="saveToken()">Save Key</button>
+    </div>
+  </div>
+
+  <!-- Main Content Wrap -->
+  <main class="main-wrap">
+
+    <!-- ==================== TAB 1: STUDIO (RESEARCH & DRAFT) ==================== -->
+    <section id="tab-studio" class="tab-content active">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Composer Studio</h1>
+          <p class="page-desc">Crawl live national news sources or draft directly from a topic angle.</p>
+        </div>
+        <div class="segmented-control" id="studioModeSelector">
+          <button type="button" class="segment-btn active" onclick="switchStudioMode('research')">Deep Research</button>
+          <button type="button" class="segment-btn" onclick="switchStudioMode('direct')">Direct Angle</button>
+        </div>
+      </div>
+
+      <!-- Mode A: Deep Research -->
+      <div id="studioModeResearch" class="card">
+        <div class="card-head">
+          <div class="card-title">Live Internet Research</div>
+          <span class="badge badge-success">Freshness: &lt; 24h</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <textarea id="researchTopic" class="textarea" placeholder="Give any hint or topic (e.g. 'AAP MLA joining BJP', 'SEBI Adani probe', 'Supreme Court electoral bonds')..." onkeydown="handleResearchKey(event)"></textarea>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+            <div class="segmented-control" id="researchFormatPills">
+              <button type="button" class="segment-btn active" onclick="selectResearchFormat(this, 'analysis')">Analysis</button>
+              <button type="button" class="segment-btn" onclick="selectResearchFormat(this, 'breaking_jab')">Breaking Take</button>
+              <button type="button" class="segment-btn" onclick="selectResearchFormat(this, 'context')">Context</button>
+              <button type="button" class="segment-btn" onclick="selectResearchFormat(this, 'opinion')">Opinion</button>
+            </div>
+            <input type="hidden" id="researchFormat" value="analysis">
+
+            <button class="btn btn-primary" id="btnResearch" onclick="runDeepResearch()">
+              <span>Search Sources</span>
+            </button>
+          </div>
+
+          <!-- Progress -->
+          <div id="researchProgress" style="display: none; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); padding: 8px 0;">
+            <span class="spinner"></span>
+            <span id="researchStatusText">Crawling live sources...</span>
+          </div>
+
+          <!-- Step 2: Source Picker -->
+          <div id="researchSourcesBox" style="display: none; margin-top: 10px; border-top: 1px solid var(--border-subtle); padding-top: 14px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+              <div style="font-size: 12px; font-weight: 600; color: #fff;">Select an article to draft from:</div>
+              <span id="researchSourceCount" class="badge badge-primary">0 found</span>
+            </div>
+            <div id="researchSourcesList" class="source-list"></div>
+          </div>
+
+          <!-- Step 3: Drafting progress -->
+          <div id="researchDraftProgress" style="display: none; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); padding: 10px 0;">
+            <span class="spinner"></span>
+            <span id="researchDraftStatusText">Drafting tweet from selected article...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mode B: Direct Angle -->
+      <div id="studioModeDirect" class="card" style="display: none;">
+        <div class="card-head">
+          <div class="card-title">Direct On-Demand Post</div>
+          <span class="badge badge-muted">Direct Pipeline</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <textarea id="commandTopic" class="textarea" placeholder="Give an angle or context (e.g. 'Bengaluru AI founders vs Silicon Valley', 'Tata semiconductor fab in Dholera')..." onkeydown="handleComposerKey(event)"></textarea>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+            <div class="segmented-control" id="commandFormatPills">
+              <button type="button" class="segment-btn active" onclick="selectFormat(this, 'analysis')">Analysis</button>
+              <button type="button" class="segment-btn" onclick="selectFormat(this, 'breaking_jab')">Breaking Take</button>
+              <button type="button" class="segment-btn" onclick="selectFormat(this, 'context')">Context</button>
+              <button type="button" class="segment-btn" onclick="selectFormat(this, 'opinion')">Opinion</button>
+            </div>
+            <input type="hidden" id="commandFormat" value="analysis">
+
+            <button class="btn btn-primary" id="btnDraft" onclick="runCommand()">
+              <span>Draft Tweet</span>
+            </button>
+          </div>
+
+          <div id="commandProgress" style="display: none; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); padding: 8px 0;">
+            <span class="spinner"></span>
+            <span id="commandStatusText">Drafting post...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Unified Generated Preview Card -->
+      <div id="unifiedResultBox" style="display: none;" class="card">
+        <div class="card-head">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="card-title">Generated Preview</div>
+            <span id="previewFormatBadge" class="badge badge-primary">analysis</span>
+            <span id="previewAiBadge" class="badge badge-success" style="display: none;">AI Edited</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <button class="btn btn-secondary btn-sm" id="btnChangeSource" style="display: none;" onclick="resetDeepResearch()">Change Story</button>
+          </div>
+        </div>
+
+        <div id="selectedSourcePill" style="display: none; background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2); border-radius: var(--radius-sm); padding: 6px 12px; margin-bottom: 12px; font-size: 11.5px; color: var(--text-muted);">
+          <strong style="color: var(--primary-text);">Story: </strong><span id="selectedSourceTitle"></span>
+        </div>
+
+        <div class="tweet-card" style="margin-bottom: 0;">
+          <div class="tweet-header">
+            <div class="tweet-author">
+              <div class="avatar-sm">SB</div>
+              <div>
+                <div class="author-name">NotANerd</div>
+                <div class="author-handle">@ssh_bugs · preview</div>
+              </div>
+            </div>
+          </div>
+
+          <textarea id="unifiedPreviewText" class="tweet-textarea" oninput="updateCharCount('unifiedPreviewText', 'unifiedPreviewCount')"></textarea>
+
+          <!-- Verified Editorial Photo Attachment Container -->
+          <div id="unifiedImageContainer" style="display: none; margin: 12px 0; position: relative; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border); max-width: 520px; background: rgba(0,0,0,0.35);">
+            <img id="unifiedImagePreview" src="" alt="Verified Post Image" style="width: 100%; max-height: 280px; object-fit: cover; display: block;" onerror="this.parentElement.style.display='none'">
+            <div style="position: absolute; top: 8px; right: 8px; display: flex; gap: 6px;">
+              <button class="btn btn-secondary btn-sm" style="background: rgba(15,19,28,0.85); backdrop-filter: blur(4px); padding: 3px 8px; font-size: 11px;" onclick="removeUnifiedImage()">✕ Remove Image</button>
+            </div>
+            <div id="unifiedImageCaption" style="font-size: 11px; color: var(--text-dim); padding: 5px 10px; background: rgba(15,19,28,0.75); border-top: 1px solid var(--border-subtle);">Verified editorial photo</div>
+          </div>
+          <div id="unifiedImageAddRow" style="display: none; margin: 6px 0 10px 0;">
+            <button class="btn btn-secondary btn-sm" onclick="promptUnifiedImageUrl()" style="font-size: 11px; padding: 3px 9px; color: var(--text-dim);">+ Add Verified Image URL</button>
+          </div>
+
+          <!-- AI Rewrite Input -->
+          <div id="unified_ai_box" class="ai-bar" style="display: none;">
+            <input type="text" id="unified_ai_input" class="ai-input" placeholder="Tell AI what to change (e.g. sharper hook, make more punchy)..." onkeydown="if(event.key==='Enter')refineUnifiedPreviewWithAi()">
+            <button class="btn btn-primary btn-sm" id="btn_unified_ai_submit" onclick="refineUnifiedPreviewWithAi()">Rewrite</button>
+            <button class="btn btn-secondary btn-sm" onclick="toggleUnifiedAiBox()">Cancel</button>
+          </div>
+
+          <div class="tweet-footer">
+            <span id="unifiedPreviewCount" class="char-meter">0 / 280</span>
+            <div class="tweet-actions">
+              <button class="btn btn-primary btn-sm" id="btn_unified_publish" onclick="publishUnifiedDirect()" style="background: #2563eb; color: #fff; border-color: #3b82f6; font-weight: 600;">Publish to X</button>
+              <button class="btn btn-secondary btn-sm" id="btn_unified_revert" style="display: none;" onclick="revertUnifiedPreview()">Revert</button>
+              <button class="btn btn-secondary btn-sm" onclick="toggleUnifiedAiBox()">AI Rewrite</button>
+              <button class="btn btn-secondary btn-sm" onclick="copyUnifiedPreview()">Copy Post</button>
+              <button class="btn btn-secondary btn-sm" onclick="openXWithUnifiedPreview()">Open in X</button>
+              <button class="btn btn-success-subtle btn-sm" onclick="markUnifiedPublished()">Mark Published</button>
+            </div>
+          </div>
+          <p id="unifiedPreviewRationale" class="tweet-rationale"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 2: REVIEW QUEUE ==================== -->
+    <section id="tab-queue" class="tab-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Draft Review Queue</h1>
+          <p class="page-desc">Automated and staged drafts pending operator review and dispatch.</p>
+        </div>
+        <button class="btn btn-secondary btn-sm" id="btnRefreshQueue" onclick="loadDrafts(true)">Refresh Queue</button>
+      </div>
+
+      <div id="draftsList">
+        <div class="empty-state">Loading draft review queue...</div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 3: REPLY INTELLIGENCE ==================== -->
+    <section id="tab-replies" class="tab-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Reply Intelligence</h1>
+          <p class="page-desc">Generate high-context replies aligned with @ssh_bugs verified voice.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div>
+            <label style="display: block; font-size: 11.5px; font-weight: 500; color: var(--text-muted); margin-bottom: 4px;">Target X Post URL</label>
+            <input type="text" id="replyUrl" class="input-text" placeholder="https://x.com/username/status/188554...">
+          </div>
+
+          <div>
+            <label style="display: block; font-size: 11.5px; font-weight: 500; color: var(--text-muted); margin-bottom: 4px;">Target Post Text</label>
+            <textarea id="replyText" class="textarea" style="min-height: 60px;" placeholder="Paste the text of the tweet you are replying to..."></textarea>
+          </div>
+
+          <div>
+            <label style="display: block; font-size: 11.5px; font-weight: 500; color: var(--text-muted); margin-bottom: 4px;">Additional Context (Optional)</label>
+            <input type="text" id="replyContext" class="input-text" placeholder="Specific angle, insider detail, or nuance...">
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-top: 4px;">
+            <div class="segmented-control" id="replyStylePills">
+              <button type="button" class="segment-btn active" onclick="selectReplyStyle(this, 'analysis')">Analysis</button>
+              <button type="button" class="segment-btn" onclick="selectReplyStyle(this, 'strategic_context')">Strategic Context</button>
+              <button type="button" class="segment-btn" onclick="selectReplyStyle(this, 'direct_take')">Direct Take</button>
+            </div>
+            <input type="hidden" id="replyStyle" value="analysis">
+
+            <button class="btn btn-primary" id="btnGenReply" onclick="generateManualReplies()">
+              <span>Generate 3 Suggestions</span>
+            </button>
+          </div>
+
+          <div id="replyLoading" style="display: none; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); padding: 8px 0;">
+            <span class="spinner"></span>
+            <span>Synthesizing persona-aligned replies...</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="replyResultsBox" style="display: none;">
+        <h2 style="font-size: 13.5px; font-weight: 600; color: #fff; margin-bottom: 12px;">Generated Reply Options</h2>
+        <div id="repliesContainer" style="display: flex; flex-direction: column; gap: 12px;"></div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 4: LIVE NEWS WIRE ==================== -->
+    <section id="tab-wire" class="tab-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Live News Wire</h1>
+          <p class="page-desc">Geopolitical and market intelligence from major national feeds (last 24 hours).</p>
+        </div>
+        <button class="btn btn-secondary btn-sm" id="btnRefreshWire" onclick="triggerNewsRefresh()">Refresh Feeds</button>
+      </div>
+
+      <div id="trendingList" class="wire-grid">
+        <div class="empty-state">Loading live news wire...</div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 5: PUBLISHED ARCHIVE ==================== -->
+    <section id="tab-published" class="tab-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Published Archive</h1>
+          <p class="page-desc">History of posts approved and dispatched to X.</p>
+        </div>
+        <button class="btn btn-secondary btn-sm" id="btnRefreshPosts" onclick="loadPosts(true)">Refresh</button>
+      </div>
+
+      <div id="postsList">
+        <div class="empty-state">Loading published history...</div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB: RESEARCH STUDIO ==================== -->
+    <section id="tab-research" class="tab-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Multi-Source Research Studio</h1>
+          <p class="page-desc">Investigate stories across wire, regulatory, and news sources with syndication tracking.</p>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="loadResearchReports(true)">Refresh Reports</button>
+      </div>
+
+      <div class="card" style="margin-bottom: 20px;">
+        <div style="font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 8px;">Trigger Real-Time Investigation</div>
+        <div style="display: flex; gap: 10px;">
+          <input type="text" id="investigateInput" class="input-text" placeholder="Enter headline, topic, or claim (e.g. India semiconductor approval ₹76,000 crore)..." style="flex: 1;" onkeydown="if(event.key==='Enter')triggerInvestigate()">
+          <button class="btn btn-primary" id="btnInvestigate" onclick="triggerInvestigate()" style="white-space: nowrap;">Start Investigation</button>
+        </div>
+        <div id="investigateProgress" style="display: none; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: var(--primary-text);">
+          <span class="spinner"></span>
+          <span id="investigateStatusText">Searching 5-8 sources & analyzing contradictions...</span>
+        </div>
+      </div>
+
+      <div id="researchReportsList">
+        <div class="empty-state">Loading structured research reports...</div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB: EVENT SAGAS ==================== -->
+    <section id="tab-events" class="tab-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Event Intelligence & Timeline Memory</h1>
+          <p class="page-desc">Track evolving Indian sagas, chronological developments, and narrative memory.</p>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="loadEventsTimeline(true)">Refresh Sagas</button>
+      </div>
+
+      <div id="eventsList">
+        <div class="empty-state">Loading active event sagas...</div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB: PERFORMANCE DNA ==================== -->
+    <section id="tab-learning" class="tab-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Performance Learning & Editorial Feedback</h1>
+          <p class="page-desc">Continuous feedback loop correlating draft angles, hook types, and audience response.</p>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="loadPerformanceDNA(true)">Refresh Analytics</button>
+      </div>
+
+      <div id="performanceContainer">
+        <div class="empty-state">Loading performance insights...</div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Editorial Critic & Quality Modal -->
+  <div id="qualityModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); z-index: 999; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); width: 100%; max-width: 680px; max-height: 90vh; overflow-y: auto; padding: 24px; box-shadow: 0 16px 40px rgba(0,0,0,0.6);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px;">
+        <div>
+          <div style="font-size: 16px; font-weight: 700; color: #fff;" id="modalDraftTitle">Editorial Quality & Verification Report</div>
+          <div style="font-size: 12px; color: var(--text-dim);" id="modalDraftSubtitle">Draft #-- · Evaluating @ssh_bugs fingerprint</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="closeQualityModal()" style="padding: 2px 8px;">✕</button>
+      </div>
+
+      <div id="modalQualityContent">
+        <div class="empty-state">Loading evaluation breakdown...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer"></div>
+
+  <script>
+    // ===== AUTHENTICATION & TOKENS =====
+    const EMBEDDED_TOKEN = "{{ ADMIN_TOKEN }}";
+
+    function getAuthToken() {
+      const stored = localStorage.getItem('x_agent_admin_token');
+      if (stored && stored.trim()) return stored.trim();
+      if (EMBEDDED_TOKEN && !EMBEDDED_TOKEN.startsWith('{{')) {
+        localStorage.setItem('x_agent_admin_token', EMBEDDED_TOKEN);
+        return EMBEDDED_TOKEN;
+      }
+      return '';
+    }
+
+    function getAuthHeaders() {
+      const t = getAuthToken();
+      return t ? { 'Authorization': `Bearer ${t}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+    }
+
+    function toggleTokenPanel() {
+      const p = document.getElementById('tokenPanel');
+      p.style.display = p.style.display === 'none' ? 'block' : 'none';
+      if (p.style.display === 'block') {
+        document.getElementById('tokenInput').value = getAuthToken();
+        document.getElementById('tokenInput').focus();
+      }
+    }
+
+    function saveToken() {
+      const val = document.getElementById('tokenInput').value.trim();
+      if (!val) { showToast('Token cannot be empty', 'error'); return; }
+      localStorage.setItem('x_agent_admin_token', val);
+      document.getElementById('tokenPreview').innerText = val.slice(0, 4) + '••••';
+      toggleTokenPanel();
+      showToast('Admin token saved', 'success');
+      refreshAll();
+    }
+
+    // ===== TOASTS =====
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.innerText = message;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(8px)';
+        toast.style.transition = 'all 0.2s ease';
+        setTimeout(() => toast.remove(), 200);
+      }, 3500);
+    }
+
+    // ===== TAB NAVIGATION =====
+    function switchTab(tabId) {
+      document.querySelectorAll('.nav-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-tab') === tabId);
+      });
+      document.querySelectorAll('.tab-content').forEach(pane => {
+        pane.classList.toggle('active', pane.id === `tab-${tabId}`);
+      });
+      window.location.hash = tabId;
+      if (tabId === 'queue') loadDrafts();
+      if (tabId === 'wire') loadTrending();
+      if (tabId === 'published') loadPosts();
+      if (tabId === 'research') loadResearchReports();
+      if (tabId === 'events') loadEventsTimeline();
+      if (tabId === 'learning') loadPerformanceDNA();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const hash = (window.location.hash || '').replace('#', '');
+      if (hash && ['studio', 'queue', 'research', 'events', 'learning', 'replies', 'wire', 'published'].includes(hash)) {
+        switchTab(hash);
+      }
+    });
+
+    window.addEventListener('hashchange', () => {
+      const hash = (window.location.hash || '').replace('#', '');
+      if (hash && ['studio', 'queue', 'research', 'events', 'learning', 'replies', 'wire', 'published'].includes(hash)) {
+        switchTab(hash);
+      }
+    });
+
+    // ===== STUDIO MODES =====
+    function switchStudioMode(mode) {
+      document.querySelectorAll('#studioModeSelector .segment-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', (mode === 'research' && idx === 0) || (mode === 'direct' && idx === 1));
+      });
+      document.getElementById('studioModeResearch').style.display = mode === 'research' ? 'block' : 'none';
+      document.getElementById('studioModeDirect').style.display = mode === 'direct' ? 'block' : 'none';
+    }
+
+    // Format Pills
+    function selectResearchFormat(btn, fmt) {
+      document.querySelectorAll('#researchFormatPills .segment-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('researchFormat').value = fmt;
+    }
+
+    function selectFormat(btn, fmt) {
+      document.querySelectorAll('#commandFormatPills .segment-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('commandFormat').value = fmt;
+    }
+
+    function selectReplyStyle(btn, st) {
+      document.querySelectorAll('#replyStylePills .segment-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('replyStyle').value = st;
+    }
+
+    function handleResearchKey(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); runDeepResearch(); }
+    }
+
+    function handleComposerKey(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); runCommand(); }
+    }
+
+    function updateCharCount(textareaId, counterId) {
+      const el = document.getElementById(textareaId);
+      const countEl = document.getElementById(counterId);
+      if (!el || !countEl) return;
+      const len = el.value.length;
+      countEl.innerText = `${len} / 280`;
+      countEl.className = 'char-meter';
+      if (len > 280) countEl.classList.add('danger');
+      else if (len > 250) countEl.classList.add('warning');
+    }
+
+    // ===== DEEP RESEARCH LOGIC =====
+    let researchActiveDraftId = null;
+    let researchAllSources = [];
+    let researchCurrentTopic = '';
+    let unifiedOriginalText = null;
+    let unifiedCurrentImageUrl = null;
+
+    function resetDeepResearch() {
+      document.getElementById('unifiedResultBox').style.display = 'none';
+      document.getElementById('selectedSourcePill').style.display = 'none';
+      document.getElementById('researchSourcesBox').style.display = 'block';
+      document.getElementById('researchDraftProgress').style.display = 'none';
+      researchAllSources.forEach((_, i) => {
+        const btn = document.getElementById('src_btn_' + i);
+        if (btn) { btn.disabled = false; btn.innerText = 'Draft'; }
+        const row = document.getElementById('src_row_' + i);
+        if (row) row.style.opacity = '1';
+      });
+    }
+
+    async function runDeepResearch() {
+      const topic = document.getElementById('researchTopic').value.trim();
+      const btn = document.getElementById('btnResearch');
+      const progress = document.getElementById('researchProgress');
+      if (!topic) { showToast('Provide a topic hint to research', 'error'); return; }
+
+      researchCurrentTopic = topic;
+      researchAllSources = [];
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Searching...';
+      progress.style.display = 'flex';
+      document.getElementById('researchStatusText').innerText = 'Crawling live national feeds (< 24h)...';
+      document.getElementById('researchSourcesBox').style.display = 'none';
+      document.getElementById('unifiedResultBox').style.display = 'none';
+      document.getElementById('researchDraftProgress').style.display = 'none';
+
+      try {
+        const res = await fetch('/api/dashboard/deep_research/sources', {
+          method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ topic })
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || 'Search failed');
+        }
+        const data = await res.json();
+        researchAllSources = data.sources || [];
+        if (researchAllSources.length === 0) {
+          showToast('No articles found in the last 24h. Try a different query.', 'error');
+          return;
+        }
+        renderResearchSources(researchAllSources);
+        document.getElementById('researchSourceCount').innerText = `${researchAllSources.length} stories found`;
+        document.getElementById('researchSourcesBox').style.display = 'block';
+        showToast(`Found ${researchAllSources.length} stories from the last 24h`, 'info');
+      } catch (err) {
+        showToast('Search error: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Search Sources';
+        progress.style.display = 'none';
+      }
+    }
+
+    function renderResearchSources(sources) {
+      const list = document.getElementById('researchSourcesList');
+      list.innerHTML = sources.map((s, i) =>
+        '<div class="source-item" id="src_row_' + i + '" style="display:flex;align-items:center;gap:12px;">' +
+        (s.image_url ? '<img src="' + escapeHtml(s.image_url) + '" style="width:52px;height:52px;border-radius:6px;object-fit:cover;flex-shrink:0;border:1px solid var(--border);" onerror="this.style.display=\'none\'">' : '') +
+        '<div style="flex:1;min-width:0;">' +
+        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap;">' +
+        (s.time_ago ? '<span class="badge badge-success">' + escapeHtml(s.time_ago) + '</span>' : '') +
+        (s.image_url ? '<span class="badge" style="background:rgba(99,102,241,0.15);color:#a5b4fc;font-size:10px;">Photo</span>' : '') +
+        '<span style="color:#fff;font-size:13px;font-weight:600;line-height:1.35;">' + escapeHtml(s.title) + '</span>' +
+        '</div>' +
+        (s.summary ? '<div style="color:var(--text-dim);font-size:11.5px;line-height:1.4;">' + escapeHtml(s.summary.slice(0, 140)) + '...</div>' : '') +
+        '</div>' +
+        '<button class="btn btn-primary btn-sm" onclick="draftFromSource(' + i + ')" id="src_btn_' + i + '">Draft</button>' +
+        '</div>'
+      ).join('');
+    }
+
+    async function draftFromSource(index) {
+      const source = researchAllSources[index];
+      if (!source) return;
+      const format = document.getElementById('researchFormat').value;
+
+      researchAllSources.forEach((_, i) => {
+        const btn = document.getElementById('src_btn_' + i);
+        if (btn) {
+          btn.disabled = true;
+          btn.innerHTML = (i === index) ? '<span class="spinner"></span> Drafting...' : 'Draft';
+        }
+        const row = document.getElementById('src_row_' + i);
+        if (row) row.style.opacity = (i === index) ? '1' : '0.35';
+      });
+
+      document.getElementById('researchDraftProgress').style.display = 'flex';
+      document.getElementById('researchDraftStatusText').innerText = 'Drafting from: "' + source.title.slice(0, 50) + '..."';
+      document.getElementById('unifiedResultBox').style.display = 'none';
+
+      try {
+        const res = await fetch('/api/dashboard/deep_research/draft', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            topic: researchCurrentTopic,
+            format: format,
+            selected_title: source.title,
+            selected_summary: source.summary || '',
+            selected_url: source.url || '',
+            selected_image_url: source.image_url || '',
+            all_sources: researchAllSources,
+          })
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || 'Draft failed');
+        }
+
+        const data = await res.json();
+        researchActiveDraftId = data.draft && data.draft.id;
+        unifiedOriginalText = null;
+
+        document.getElementById('selectedSourceTitle').innerText = source.title;
+        document.getElementById('selectedSourcePill').style.display = 'block';
+        document.getElementById('btnChangeSource').style.display = 'inline-flex';
+        document.getElementById('unifiedPreviewText').value = (data.draft && data.draft.body) || '';
+        document.getElementById('previewFormatBadge').innerText = (data.draft && data.draft.format) || format;
+        document.getElementById('unifiedPreviewRationale').innerText = (data.draft && data.draft.rationale) || '';
+        document.getElementById('previewAiBadge').style.display = 'none';
+        document.getElementById('btn_unified_revert').style.display = 'none';
+        updateCharCount('unifiedPreviewText', 'unifiedPreviewCount');
+
+        if (data.draft && data.draft.image_url) {
+          unifiedCurrentImageUrl = data.draft.image_url;
+          document.getElementById('unifiedImagePreview').src = data.draft.image_url;
+          document.getElementById('unifiedImageContainer').style.display = 'block';
+          document.getElementById('unifiedImageAddRow').style.display = 'none';
+        } else {
+          unifiedCurrentImageUrl = null;
+          document.getElementById('unifiedImageContainer').style.display = 'none';
+          document.getElementById('unifiedImageAddRow').style.display = 'block';
+        }
+
+        document.getElementById('researchSourcesBox').style.display = 'none';
+        document.getElementById('unifiedResultBox').style.display = 'block';
+        document.getElementById('unifiedResultBox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        showToast('Draft generated from selected source', 'success');
+        loadStats(); loadDrafts();
+      } catch (err) {
+        showToast('Draft error: ' + err.message, 'error');
+        researchAllSources.forEach((_, i) => {
+          const btn = document.getElementById('src_btn_' + i);
+          if (btn) { btn.disabled = false; btn.innerText = 'Draft'; }
+          const row = document.getElementById('src_row_' + i);
+          if (row) row.style.opacity = '1';
+        });
+      } finally {
+        document.getElementById('researchDraftProgress').style.display = 'none';
+      }
+    }
+
+    // ===== DIRECT DRAFT LOGIC =====
+    async function runCommand() {
+      const topic = document.getElementById('commandTopic').value.trim();
+      const format = document.getElementById('commandFormat').value;
+      const btn = document.getElementById('btnDraft');
+      const progress = document.getElementById('commandProgress');
+
+      if (!topic) { showToast('Provide a topic or angle to draft', 'error'); return; }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Drafting...';
+      progress.style.display = 'flex';
+      document.getElementById('commandStatusText').innerText = 'Generating post from angle...';
+      document.getElementById('unifiedResultBox').style.display = 'none';
+
+      try {
+        const res = await fetch('/api/dashboard/command/draft', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ topic, format })
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || 'Generation failed');
+        }
+        const data = await res.json();
+        researchActiveDraftId = data.draft && data.draft.id;
+        unifiedOriginalText = null;
+
+        document.getElementById('selectedSourcePill').style.display = 'none';
+        document.getElementById('btnChangeSource').style.display = 'none';
+        document.getElementById('unifiedPreviewText').value = (data.draft && data.draft.body) || '';
+        document.getElementById('previewFormatBadge').innerText = (data.draft && data.draft.format) || format;
+        document.getElementById('unifiedPreviewRationale').innerText = (data.draft && data.draft.rationale) || '';
+        document.getElementById('previewAiBadge').style.display = 'none';
+        document.getElementById('btn_unified_revert').style.display = 'none';
+        updateCharCount('unifiedPreviewText', 'unifiedPreviewCount');
+
+        if (data.draft && data.draft.image_url) {
+          unifiedCurrentImageUrl = data.draft.image_url;
+          document.getElementById('unifiedImagePreview').src = data.draft.image_url;
+          document.getElementById('unifiedImageContainer').style.display = 'block';
+          document.getElementById('unifiedImageAddRow').style.display = 'none';
+        } else {
+          unifiedCurrentImageUrl = null;
+          document.getElementById('unifiedImageContainer').style.display = 'none';
+          document.getElementById('unifiedImageAddRow').style.display = 'block';
+        }
+
+        document.getElementById('unifiedResultBox').style.display = 'block';
+        document.getElementById('unifiedResultBox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        showToast('Draft generated', 'success');
+        loadStats(); loadDrafts();
+      } catch (err) {
+        showToast('Draft error: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Draft Tweet';
+        progress.style.display = 'none';
+      }
+    }
+
+    // ===== UNIFIED PREVIEW ACTIONS =====
+    function toggleUnifiedAiBox() {
+      const box = document.getElementById('unified_ai_box');
+      const isHidden = box.style.display === 'none';
+      box.style.display = isHidden ? 'flex' : 'none';
+      if (isHidden) document.getElementById('unified_ai_input').focus();
+    }
+
+    async function refineUnifiedPreviewWithAi() {
+      const input = document.getElementById('unified_ai_input');
+      const instruction = input.value.trim();
+      if (!instruction) { showToast('Provide instructions for the rewrite', 'error'); return; }
+      const currentText = document.getElementById('unifiedPreviewText').value;
+      if (!unifiedOriginalText) unifiedOriginalText = currentText;
+      const btn = document.getElementById('btn_unified_ai_submit');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Rewriting...';
+
+      try {
+        const res = await fetch('/api/dashboard/refine_text', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ current_text: currentText, instruction })
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || 'Refinement failed');
+        }
+        const data = await res.json();
+        if (data.refined_text) {
+          document.getElementById('unifiedPreviewText').value = data.refined_text;
+          updateCharCount('unifiedPreviewText', 'unifiedPreviewCount');
+          document.getElementById('previewAiBadge').style.display = 'inline-flex';
+          document.getElementById('btn_unified_revert').style.display = 'inline-flex';
+          toggleUnifiedAiBox();
+          input.value = '';
+          showToast('Draft rewritten by AI', 'success');
+          if (researchActiveDraftId) {
+            await fetch('/api/dashboard/drafts/' + researchActiveDraftId, {
+              method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ body: data.refined_text, image_url: unifiedCurrentImageUrl || '' })
+            });
+          }
+        }
+      } catch (err) {
+        showToast('Refinement error: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Rewrite';
+      }
+    }
+
+    function revertUnifiedPreview() {
+      if (!unifiedOriginalText) return;
+      document.getElementById('unifiedPreviewText').value = unifiedOriginalText;
+      updateCharCount('unifiedPreviewText', 'unifiedPreviewCount');
+      document.getElementById('previewAiBadge').style.display = 'none';
+      document.getElementById('btn_unified_revert').style.display = 'none';
+      unifiedOriginalText = null;
+      showToast('Reverted to original text', 'info');
+    }
+
+    async function copyUnifiedPreview() {
+      const text = document.getElementById('unifiedPreviewText').value;
+      if (!text) return;
+      await navigator.clipboard.writeText(text);
+      showToast('Tweet copied to clipboard', 'success');
+    }
+
+    async function removeUnifiedImage() {
+      unifiedCurrentImageUrl = null;
+      document.getElementById('unifiedImageContainer').style.display = 'none';
+      document.getElementById('unifiedImageAddRow').style.display = 'block';
+      if (researchActiveDraftId) {
+        const text = document.getElementById('unifiedPreviewText').value;
+        await fetch('/api/dashboard/drafts/' + researchActiveDraftId, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ body: text, image_url: '' })
+        });
+        showToast('Image removed from draft', 'info');
+      }
+    }
+
+    async function promptUnifiedImageUrl() {
+      const url = prompt('Enter verified image URL:');
+      if (!url || !url.trim().startsWith('http')) return;
+      unifiedCurrentImageUrl = url.trim();
+      document.getElementById('unifiedImagePreview').src = unifiedCurrentImageUrl;
+      document.getElementById('unifiedImageContainer').style.display = 'block';
+      document.getElementById('unifiedImageAddRow').style.display = 'none';
+      if (researchActiveDraftId) {
+        const text = document.getElementById('unifiedPreviewText').value;
+        await fetch('/api/dashboard/drafts/' + researchActiveDraftId, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ body: text, image_url: unifiedCurrentImageUrl })
+        });
+        showToast('Verified image attached to draft', 'success');
+      }
+    }
+
+    function openXWithUnifiedPreview() {
+      const text = document.getElementById('unifiedPreviewText').value;
+      if (!text) return;
+      window.open('https://x.com/intent/post?text=' + encodeURIComponent(text), '_blank', 'noopener,noreferrer');
+      showToast('Opened X compose tab', 'info');
+    }
+
+    async function markUnifiedPublished() {
+      if (!researchActiveDraftId) return;
+      const text = document.getElementById('unifiedPreviewText').value;
+      await fetch('/api/dashboard/drafts/' + researchActiveDraftId, {
+        method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ body: text, image_url: unifiedCurrentImageUrl || '' })
+      });
+      const res = await fetch('/api/dashboard/drafts/' + researchActiveDraftId + '/mark_published', {
+        method: 'POST', headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'published') {
+        showToast('Marked as published', 'success');
+        document.getElementById('unifiedResultBox').style.display = 'none';
+        document.getElementById('researchSourcesBox').style.display = 'none';
+        document.getElementById('researchTopic').value = '';
+        document.getElementById('commandTopic').value = '';
+        researchAllSources = []; researchCurrentTopic = '';
+        loadDrafts(); loadPosts(); loadStats();
+      } else {
+        showToast('Action failed: ' + (data.detail || 'error'), 'error');
+      }
+    }
+
+    // ===== DRAFT REVIEW QUEUE =====
+    let originalDrafts = {};
+
+    async function loadDrafts(showFeedback = false) {
+      const btn = document.getElementById('btnRefreshQueue');
+      if (showFeedback && btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span>';
+      }
+      try {
+        const res = await fetch('/drafts?status=ready&limit=25', { headers: getAuthHeaders() });
+        if (!res.ok) return;
+        const data = await res.json();
+        const container = document.getElementById('draftsList');
+        const badge = document.getElementById('navQueueBadge');
+
+        const count = (data.items && data.items.length) || 0;
+        if (badge) badge.innerText = count;
+        if (showFeedback) {
+          showToast(`Review queue refreshed (${count} draft${count === 1 ? '' : 's'})`, 'info');
+        }
+
+        if (!data.items || data.items.length === 0) {
+          container.innerHTML = '<div class="empty-state">No drafts pending review. Autonomous cycle stages next draft here.</div>';
+          return;
+        }
+
+        container.innerHTML = data.items.map(d => {
+          let timeStr = '';
+          if (d.created_at) {
+            const diffMs = Math.max(0, Date.now() - new Date(d.created_at).getTime());
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHrs = Math.floor(diffMins / 60);
+            timeStr = diffMins < 60 ? `${Math.max(1, diffMins)}m ago` : `${diffHrs}h ago`;
+          }
+          return `
+          <div class="tweet-card" id="card_${d.id}">
+            <div class="tweet-header">
+              <div class="tweet-author">
+                <div class="avatar-sm">SB</div>
+                <div>
+                  <div class="author-name">NotANerd</div>
+                  <div class="author-handle">@ssh_bugs · ${timeStr || 'staged'}</div>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <span class="badge" style="background: rgba(99,102,241,0.18); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.3); text-transform: capitalize;">Angle: ${escapeHtml(d.tone || d.format || 'analytical')}</span>
+                ${d.quality_score ? `<span class="badge" style="background: rgba(16,185,129,0.12); color: #34d399; border: 1px solid rgba(16,185,129,0.25);">Score: ${Math.round(d.quality_score)}/100</span>` : ''}
+                <span class="badge" style="background: rgba(59,130,246,0.12); color: #60a5fa; border: 1px solid rgba(59,130,246,0.25);">✓ Verified (${d.sources_count || 1} sources)</span>
+                <span class="badge badge-success" id="edited_badge_${d.id}" style="${(d.review_notes && d.review_notes.includes('Operator')) ? 'display: inline-flex;' : 'display: none;'}">Operator Edited</span>
+                <button class="btn btn-secondary btn-sm" onclick="toggleAnglesView(${d.id})" style="padding: 2px 8px; font-size: 11px; color: #a5b4fc; border-color: rgba(99,102,241,0.35);">
+                  Compare Angles (${(d.alternative_angles || []).length || 3})
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="openQualityModal(${d.id})" style="padding: 2px 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; border-color: rgba(16,185,129,0.3); color: #34d399; background: rgba(16,185,129,0.1);">
+                  ★ Quality & Claims
+                </button>
+              </div>
+            </div>
+
+            <div id="edit_error_${d.id}" style="display: none; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); border-radius: 6px; padding: 8px 12px; margin-bottom: 8px; font-size: 12px; color: #f87171;"></div>
+
+            <div id="view_body_${d.id}" class="tweet-body">${escapeHtml(d.body)}</div>
+            <textarea id="edit_body_${d.id}" class="tweet-textarea" style="display: none;" oninput="updateCharCount('edit_body_${d.id}', 'count_${d.id}')">${escapeHtml(d.body)}</textarea>
+
+            <!-- Collapsible 3-Angle Drawer -->
+            ${(d.alternative_angles && d.alternative_angles.length > 0) ? `
+            <div id="angles_box_${d.id}" style="display: none; background: rgba(0,0,0,0.35); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 12px; margin: 10px 0;">
+              <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 8px;">3-Angle Editorial Comparison:</div>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                ${d.alternative_angles.map(alt => `
+                  <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                      <span class="badge badge-primary" style="text-transform: capitalize;">${escapeHtml(alt.angle || 'angle')}</span>
+                      <button class="btn btn-primary btn-sm" style="font-size: 11px; padding: 2px 8px;" onclick="switchDraftAngle(${d.id}, '${alt.angle}')">Select ${escapeHtml(alt.angle)}</button>
+                    </div>
+                    <div style="font-size: 12px; color: var(--text); line-height: 1.45;">${escapeHtml((alt.parts || []).join(' ') || alt.hook || '')}</div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>` : ''}
+
+            ${d.image_url ? `
+            <div id="draft_img_wrap_${d.id}" style="margin: 10px 0; position: relative; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border); max-width: 480px; background: rgba(0,0,0,0.35);">
+              <img src="${escapeHtml(d.image_url)}" alt="Post image" style="width: 100%; max-height: 240px; object-fit: cover; display: block;" onerror="this.parentElement.style.display='none'">
+              <div style="position: absolute; top: 6px; right: 6px;">
+                <button class="btn btn-secondary btn-sm" style="background: rgba(15,19,28,0.85); backdrop-filter: blur(4px); padding: 2px 7px; font-size: 10.5px;" onclick="removeDraftImage(${d.id})">✕ Remove Image</button>
+              </div>
+              <div style="font-size: 10.5px; color: var(--text-dim); padding: 4px 8px; background: rgba(15,19,28,0.7); border-top: 1px solid var(--border-subtle);">Verified editorial photo</div>
+            </div>
+            ` : `
+            <div id="draft_img_add_${d.id}" style="margin: 6px 0 8px 0;">
+              <button class="btn btn-secondary btn-sm" onclick="promptDraftImageUrl(${d.id})" style="font-size: 10.5px; padding: 2px 7px; color: var(--text-dim);">+ Add Verified Image URL</button>
+            </div>
+            `}
+
+            <div id="ai_box_${d.id}" class="ai-bar" style="display: none;">
+              <input type="text" id="ai_input_${d.id}" class="ai-input" placeholder="Prompt AI what to change..." onkeydown="if(event.key==='Enter')refineDraftWithAi(${d.id})">
+              <button class="btn btn-primary btn-sm" id="btn_ai_submit_${d.id}" onclick="refineDraftWithAi(${d.id})">Rewrite</button>
+              <button class="btn btn-secondary btn-sm" onclick="closeAiBox(${d.id})">Cancel</button>
+            </div>
+
+            <div class="tweet-footer">
+              <span id="count_${d.id}" class="char-meter">${(d.body || '').length} / 280</span>
+              <div class="tweet-actions">
+                <button class="btn btn-success btn-sm" onclick="approveDraft(${d.id}, '${d.tone || 'analytical'}')" style="background: #059669; color: #fff; border-color: #10b981; font-weight: 600;">✓ Approve</button>
+                <button class="btn btn-danger btn-sm" onclick="openRejectModal(${d.id})" style="background: #dc2626; color: #fff; border-color: #ef4444; font-weight: 600;">✕ Reject</button>
+                <button class="btn btn-secondary btn-sm" id="btn_edit_${d.id}" onclick="toggleEditDraft(${d.id})">Edit</button>
+                <button class="btn btn-secondary btn-sm" onclick="toggleAnglesView(${d.id})" style="color: #a5b4fc; border-color: rgba(99,102,241,0.35);">Angles</button>
+                <button class="btn btn-secondary btn-sm" onclick="openQualityModal(${d.id})">Quality Breakdown</button>
+                <button class="btn btn-secondary btn-sm" onclick="copyDraftText(${d.id})">Copy</button>
+                <button class="btn btn-secondary btn-sm" onclick="openXWithDraft(${d.id})">Open in X</button>
+                <button class="btn btn-primary btn-sm" id="btn_publish_${d.id}" onclick="publishDraftDirect(${d.id})" style="background: #2563eb; color: #fff; border-color: #3b82f6; font-weight: 600;">Publish to X</button>
+              </div>
+            </div>
+            ${d.rationale ? `<p class="tweet-rationale">${escapeHtml(d.rationale)}</p>` : ''}
+          </div>          `;
+        }).join('');
+      } catch (err) {
+        console.error('Failed to load drafts', err);
+      } finally {
+        if (showFeedback && btn) {
+          btn.disabled = false;
+          btn.innerText = 'Refresh Queue';
+        }
+      }
+    }
+
+
+    async function publishDraftDirect(id) {
+      const btn = document.getElementById(`btn_publish_${id}`);
+      const orig = btn ? btn.innerHTML : 'Publish to X';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Dispatching to X...';
+      }
+      try {
+        const res = await fetch(`/api/dashboard/drafts/${id}/publish_now`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+        });
+        const data = await res.json();
+        if (res.ok && data.status === 'published') {
+          showToast('Published live to @ssh_bugs on X!', 'success');
+          const card = document.getElementById(`card_${id}`);
+          if (card) card.remove();
+          loadStats();
+          loadPosts();
+          loadDrafts();
+        } else {
+          const err = data.reasons ? data.reasons.join(', ') : (data.detail || 'Publishing failed');
+          showToast('Publish failed: ' + err, 'error');
+        }
+      } catch (err) {
+        showToast('Publish error: ' + err.message, 'error');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = orig;
+        }
+      }
+    }
+
+    async function publishUnifiedDirect() {
+      if (!researchActiveDraftId) return;
+      const text = document.getElementById('unifiedPreviewText').value;
+      await fetch('/api/dashboard/drafts/' + researchActiveDraftId, {
+        method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ body: text, image_url: unifiedCurrentImageUrl || '' })
+      });
+      const btn = document.getElementById('btn_unified_publish');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Dispatching to X...';
+      }
+      try {
+        const res = await fetch(`/api/dashboard/drafts/${researchActiveDraftId}/publish_now`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+        });
+        const data = await res.json();
+        if (res.ok && data.status === 'published') {
+          showToast('Published live to @ssh_bugs on X!', 'success');
+          document.getElementById('unifiedResultBox').style.display = 'none';
+          loadStats();
+          loadPosts();
+          loadDrafts();
+        } else {
+          const err = data.reasons ? data.reasons.join(', ') : (data.detail || 'Publishing failed');
+          showToast('Publish failed: ' + err, 'error');
+        }
+      } catch (err) {
+        showToast('Publish error: ' + err.message, 'error');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = 'Publish to X';
+        }
+      }
+    }
+
+    async function removeDraftImage(id) {
+      const viewEl = document.getElementById(`view_body_${id}`);
+      const currentText = viewEl ? viewEl.innerText : '';
+      await fetch(`/api/dashboard/drafts/${id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ body: currentText, image_url: '' })
+      });
+      showToast('Image removed from draft', 'info');
+      loadDrafts();
+    }
+
+    async function promptDraftImageUrl(id) {
+      const url = prompt('Enter verified image URL:');
+      if (!url || !url.trim().startsWith('http')) return;
+      const viewEl = document.getElementById(`view_body_${id}`);
+      const currentText = viewEl ? viewEl.innerText : '';
+      await fetch(`/api/dashboard/drafts/${id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ body: currentText, image_url: url.trim() })
+      });
+      showToast('Verified image attached to draft', 'success');
+      loadDrafts();
+    }
+
+    function toggleEditDraft(id) {
+      const viewEl = document.getElementById(`view_body_${id}`);
+      const editEl = document.getElementById(`edit_body_${id}`);
+      const btn = document.getElementById(`btn_edit_${id}`);
+      if (editEl.style.display === 'none') {
+        editEl.style.display = 'block';
+        viewEl.style.display = 'none';
+        btn.innerText = 'Save';
+        btn.className = 'btn btn-primary btn-sm';
+        editEl.focus();
+        updateCharCount(`edit_body_${id}`, `count_${id}`);
+      } else {
+        saveDraftEdit(id);
+      }
+    }
+
+    async function saveDraftEdit(id) {
+      const editEl = document.getElementById(`edit_body_${id}`);
+      const viewEl = document.getElementById(`view_body_${id}`);
+      const errEl = document.getElementById(`edit_error_${id}`);
+      const btn = document.getElementById(`btn_edit_${id}`);
+      const newText = editEl.value.trim();
+      if (errEl) errEl.style.display = 'none';
+      btn.disabled = true;
+      try {
+        const res = await fetch(`/api/editorial/feedback/${id}/edit`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ edited_text: newText, operator_comment: 'Operator in-place edit' })
+        });
+        if (res.ok) {
+          viewEl.innerText = newText;
+          editEl.style.display = 'none';
+          viewEl.style.display = 'block';
+          btn.innerText = 'Edit';
+          btn.className = 'btn btn-secondary btn-sm';
+          const badge = document.getElementById(`edited_badge_${id}`);
+          if (badge) badge.style.display = 'inline-flex';
+          showToast('Draft edited and verified by ClaimVerifier', 'success');
+        } else {
+          const err = await res.json().catch(() => ({}));
+          const msg = err.detail || 'Validation failed';
+          if (errEl) {
+            errEl.innerText = 'Validation Error: ' + msg;
+            errEl.style.display = 'block';
+          }
+          showToast('Edit rejected: ' + msg, 'error');
+        }
+      } catch (err) {
+        showToast('Save error: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function toggleAiBox(id) {
+      const box = document.getElementById(`ai_box_${id}`);
+      const isHidden = box.style.display === 'none';
+      box.style.display = isHidden ? 'flex' : 'none';
+      if (isHidden) document.getElementById(`ai_input_${id}`).focus();
+    }
+
+    function closeAiBox(id) {
+      document.getElementById(`ai_box_${id}`).style.display = 'none';
+    }
+
+    async function refineDraftWithAi(id) {
+      const input = document.getElementById(`ai_input_${id}`);
+      const instruction = input.value.trim();
+      if (!instruction) { showToast('Provide rewrite instruction', 'error'); return; }
+      const currentText = document.getElementById(`edit_body_${id}`).value || document.getElementById(`view_body_${id}`).innerText;
+      if (!originalDrafts[id]) originalDrafts[id] = currentText;
+      const btn = document.getElementById(`btn_ai_submit_${id}`);
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>';
+
+      try {
+        const res = await fetch(`/api/dashboard/drafts/${id}/refine`, {
+          method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ current_text: currentText, instruction })
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || 'Refinement failed');
+        }
+        const data = await res.json();
+        if (data.refined_text) {
+          document.getElementById(`view_body_${id}`).innerText = data.refined_text;
+          document.getElementById(`edit_body_${id}`).value = data.refined_text;
+          updateCharCount(`edit_body_${id}`, `count_${id}`);
+          document.getElementById(`ai_badge_${id}`).style.display = 'inline-flex';
+          document.getElementById(`btn_revert_${id}`).style.display = 'inline-flex';
+          closeAiBox(id);
+          input.value = '';
+          showToast('Draft rewritten by AI', 'success');
+        }
+      } catch (err) {
+        showToast('Refinement error: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Rewrite';
+      }
+    }
+
+    async function revertDraftAi(id) {
+      if (!originalDrafts[id]) return;
+      const originalText = originalDrafts[id];
+      try {
+        const res = await fetch(`/api/dashboard/drafts/${id}`, {
+          method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ body: originalText })
+        });
+        if (res.ok) {
+          document.getElementById(`view_body_${id}`).innerText = originalText;
+          document.getElementById(`edit_body_${id}`).value = originalText;
+          updateCharCount(`edit_body_${id}`, `count_${id}`);
+          document.getElementById(`ai_badge_${id}`).style.display = 'none';
+          document.getElementById(`btn_revert_${id}`).style.display = 'none';
+          delete originalDrafts[id];
+          showToast('Reverted to original draft', 'info');
+        }
+      } catch (err) {
+        showToast('Revert error: ' + err.message, 'error');
+      }
+    }
+
+    async function copyDraftText(id) {
+      const text = document.getElementById(`view_body_${id}`).innerText;
+      await navigator.clipboard.writeText(text);
+      showToast('Tweet copied to clipboard', 'success');
+    }
+
+    function openXWithDraft(id) {
+      const text = document.getElementById(`view_body_${id}`).innerText;
+      window.open(`https://x.com/intent/post?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+      showToast('Opened X compose tab', 'info');
+    }
+
+    async function markDraftPublished(id) {
+      try {
+        const res = await fetch(`/api/dashboard/drafts/${id}/mark_published`, {
+          method: 'POST', headers: getAuthHeaders()
+        });
+        const data = await res.json();
+        if (res.ok && data.status === 'published') {
+          showToast('Marked as published', 'success');
+          const card = document.getElementById(`card_${id}`);
+          if (card) card.remove();
+          loadStats(); loadPosts();
+        } else {
+          showToast('Failed: ' + (data.detail || 'error'), 'error');
+        }
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+      }
+    }
+
+    async function approveDraft(id, angle) {
+      try {
+        const res = await fetch('/api/editorial/feedback', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            draft_id: id,
+            action: 'approved',
+            candidate_angle: angle || 'single_tweet',
+            candidate_version: 1,
+            operator_comment: 'Approved by operator for staging'
+          })
+        });
+        if (res.ok) {
+          showToast('Draft approved and staged locally', 'success');
+          loadDrafts();
+          loadStats();
+        } else {
+          const err = await res.json().catch(() => ({}));
+          showToast('Approval failed: ' + (err.detail || 'error'), 'error');
+        }
+      } catch (err) {
+        showToast('Approval error: ' + err.message, 'error');
+      }
+    }
+
+    function openRejectModal(id) {
+      document.getElementById('rejectDraftId').value = id;
+      document.getElementById('rejectionCommentInput').value = '';
+      document.getElementById('rejectionModal').style.display = 'flex';
+    }
+
+    function closeRejectionModal() {
+      document.getElementById('rejectionModal').style.display = 'none';
+    }
+
+    async function submitDraftRejection() {
+      const id = parseInt(document.getElementById('rejectDraftId').value);
+      const reason = document.getElementById('rejectionReasonSelect').value;
+      const comment = document.getElementById('rejectionCommentInput').value.trim();
+      const btn = document.getElementById('btnConfirmReject');
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/editorial/feedback', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            draft_id: id,
+            action: 'rejected',
+            rejection_reason: reason,
+            operator_comment: comment
+          })
+        });
+        if (res.ok) {
+          showToast(`Draft rejected [${reason}]`, 'info');
+          closeRejectionModal();
+          const card = document.getElementById(`card_${id}`);
+          if (card) card.remove();
+          loadDrafts();
+          loadStats();
+        } else {
+          const err = await res.json().catch(() => ({}));
+          showToast('Rejection failed: ' + (err.detail || 'error'), 'error');
+        }
+      } catch (err) {
+        showToast('Rejection error: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function toggleAnglesView(id) {
+      const el = document.getElementById(`angles_box_${id}`);
+      if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function rejectDraft(id) {
+      openRejectModal(id);
+    }
+
+    // ===== REPLY INTELLIGENCE =====
+    async function generateManualReplies() {
+      const targetUrl = document.getElementById('replyUrl').value.trim();
+      const targetText = document.getElementById('replyText').value.trim();
+      const context = document.getElementById('replyContext').value.trim();
+      const style = document.getElementById('replyStyle').value;
+      const btn = document.getElementById('btnGenReply');
+      const loader = document.getElementById('replyLoading');
+
+      if (!targetUrl && !targetText) {
+        showToast('Provide either a Tweet URL or paste target text', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Generating...';
+      loader.style.display = 'flex';
+      document.getElementById('replyResultsBox').style.display = 'none';
+
+      try {
+        const res = await fetch('/api/dashboard/replies/manual_generate', {
+          method: 'POST', headers: getAuthHeaders(),
+          body: JSON.stringify({ target_post_url: targetUrl || null, target_post_text: targetText || null, context: context || null, style })
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || 'Failed to generate');
+        }
+        const data = await res.json();
+        const container = document.getElementById('repliesContainer');
+        container.innerHTML = (data.suggestions || []).map(s => `
+          <div class="tweet-card">
+            <div class="tweet-header">
+              <span class="badge badge-primary">${escapeHtml(s.label)}</span>
+              <span class="char-meter">${(s.text || '').length} / 280</span>
+            </div>
+            <div class="tweet-body" id="reply_body_${s.draft_id}">${escapeHtml(s.text)}</div>
+            <div class="tweet-footer">
+              <span style="font-size: 11px; color: var(--text-dim);">${escapeHtml(s.description)}</span>
+              <div class="tweet-actions">
+                <button class="btn btn-secondary btn-sm" onclick="copyReplyText('${s.draft_id}')">Copy</button>
+                <button class="btn btn-primary btn-sm" onclick="openXWithDraft('${s.draft_id}')">Open in X</button>
+                <button class="btn btn-danger-subtle btn-sm" onclick="rejectDraft('${s.draft_id}')">Discard</button>
+              </div>
+            </div>
+          </div>
+        `).join('');
+        document.getElementById('replyResultsBox').style.display = 'block';
+        showToast('3 reply suggestions generated', 'success');
+        loadStats(); loadDrafts();
+      } catch (err) {
+        showToast('Generation error: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Generate 3 Suggestions';
+        loader.style.display = 'none';
+      }
+    }
+
+    async function copyReplyText(id) {
+      const text = document.getElementById(`reply_body_${id}`).innerText;
+      await navigator.clipboard.writeText(text);
+      showToast('Reply text copied to clipboard', 'success');
+    }
+
+    // ===== LIVE NEWS WIRE =====
+    function renderTrendingItems(items) {
+      const container = document.getElementById('trendingList');
+      if (!items || items.length === 0) {
+        container.innerHTML = '<div class="empty-state">No stories found in the last 24h. Click Refresh Feeds to crawl live.</div>';
+        return;
+      }
+      container.innerHTML = items.map(item => {
+        let ageLabel = '';
+        if (item.retrieved_at) {
+          const diffMs = Math.max(0, Date.now() - new Date(item.retrieved_at).getTime());
+          const diffMins = Math.floor(diffMs / 60000);
+          const diffHrs = Math.floor(diffMins / 60);
+          ageLabel = diffMins < 60 ? `${Math.max(1, diffMins)}m ago` : `${diffHrs}h ago`;
+        }
+        return `
+        <div class="wire-card">
+          <div style="display: flex; gap: 12px; align-items: flex-start;">
+            ${item.image_url ? `<img src="${escapeHtml(item.image_url)}" style="width: 58px; height: 58px; border-radius: 6px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--border);" onerror="this.style.display='none'">` : ''}
+            <div style="flex: 1; min-width: 0;">
+              <div class="wire-card-top">
+                <span class="badge badge-muted">${escapeHtml(item.source_type || 'news')}</span>
+                ${ageLabel ? `<span class="badge badge-success">${ageLabel}</span>` : ''}
+                ${item.image_url ? '<span class="badge" style="background:rgba(99,102,241,0.15);color:#a5b4fc;font-size:10px;">Photo</span>' : ''}
+              </div>
+              <div class="wire-headline">${escapeHtml(item.title)}</div>
+              ${item.excerpt ? `<div class="wire-excerpt">${escapeHtml(item.excerpt)}</div>` : ''}
+            </div>
+          </div>
+          <div class="wire-bottom">
+            <span style="font-size: 11px; color: var(--text-dim); font-family: var(--font-mono);">score: ${item.score || 0.0}</span>
+            <button class="btn btn-primary btn-sm" onclick="useTrendingTopic('${encodeURIComponent(item.title)}')">Draft in Studio</button>
+          </div>
+        </div>
+      `;
+      }).join('');
+    }
+
+    async function loadTrending() {
+      try {
+        const res = await fetch('/api/dashboard/trending?limit=24', { headers: getAuthHeaders() });
+        if (!res.ok) return;
+        const data = await res.json();
+        renderTrendingItems(data.items);
+      } catch (err) {
+        console.error('Failed to load wire', err);
+      }
+    }
+
+    async function triggerNewsRefresh() {
+      const btn = document.getElementById('btnRefreshWire');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Ingesting...';
+      }
+      try {
+        const res = await fetch('/api/dashboard/news/refresh', { method: 'POST', headers: getAuthHeaders() });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          showToast('Wire refresh failed: ' + (errData.detail || `HTTP ${res.status}`), 'error');
+          await loadTrending();
+          return;
+        }
+        const data = await res.json();
+        renderTrendingItems(data.items);
+        loadStats();
+        const stored = (data.stats && data.stats.stored) || 0;
+        if (stored > 0) {
+          showToast(`Ingested ${stored} breaking stories from live feeds`, 'success');
+        } else {
+          showToast('News wire refreshed with latest breaking news', 'info');
+        }
+      } catch (err) {
+        await loadTrending();
+        showToast('Refreshed local wire: ' + err.message, 'info');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerText = 'Refresh Feeds';
+        }
+      }
+    }
+
+    function useTrendingTopic(title) {
+      const decoded = decodeURIComponent(title);
+      switchTab('studio');
+      switchStudioMode('research');
+      document.getElementById('researchTopic').value = decoded;
+      runDeepResearch();
+    }
+
+    // ===== PUBLISHED POSTS =====
+    async function loadPosts(showFeedback = false) {
+      const btn = document.getElementById('btnRefreshPosts');
+      if (showFeedback && btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span>';
+      }
+      try {
+        const res = await fetch('/api/dashboard/posts?limit=25', { headers: getAuthHeaders() });
+        if (!res.ok) return;
+        const data = await res.json();
+        const container = document.getElementById('postsList');
+        if (!data.items || data.items.length === 0) {
+          container.innerHTML = '<div class="empty-state">No published posts logged yet. Dispatched posts appear here.</div>';
+          return;
+        }
+        container.innerHTML = data.items.map(p => `
+          <div class="tweet-card">
+            <div class="tweet-header">
+              <div class="tweet-author">
+                <div class="avatar-sm">SB</div>
+                <div>
+                  <div class="author-name">NotANerd</div>
+                  <div class="author-handle">@ssh_bugs · ${p.published_at ? new Date(p.published_at).toLocaleString() : 'published'}</div>
+                </div>
+              </div>
+              <span class="char-meter">${(p.text || '').length} / 280</span>
+            </div>
+            <div class="tweet-body">${escapeHtml(p.text)}</div>
+            <div class="tweet-footer">
+              <span style="font-size: 11px; color: var(--text-dim); font-family: var(--font-mono);">${p.x_post_id ? 'ID: ' + p.x_post_id : 'Local Operator Archive'}</span>
+              <div class="tweet-actions">
+                <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText('${escapeHtml(p.text)}'); showToast('Tweet copied', 'success');">Copy</button>
+                ${p.url ? `<a href="${p.url}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">View on X</a>` : ''}
+              </div>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error('Failed to load posts', err);
+      } finally {
+        if (showFeedback && btn) {
+          btn.disabled = false;
+          btn.innerText = 'Refresh';
+        }
+      }
+    }
+
+    // ===== STATS & METRICS =====
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/dashboard/stats', { headers: getAuthHeaders() });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (document.getElementById('statIngested')) {
+          const ing = data.stats.research_activity_24h || data.stats.total_sources || data.stats.ingested_24h || 0;
+          document.getElementById('statIngested').innerText = Number(ing).toLocaleString();
+        }
+        if (document.getElementById('statPublished')) {
+          const pub = data.stats.posts_today || data.stats.published_today || 0;
+          document.getElementById('statPublished').innerText = pub;
+        }
+        if (document.getElementById('statPacingBudget')) {
+          document.getElementById('statPacingBudget').innerText = data.settings.max_original_posts_per_day || 24;
+        }
+        if (document.getElementById('statHandle') && data.account) {
+          document.getElementById('statHandle').innerText = `@${data.account.handle}`;
+        }
+        if (document.getElementById('statModel') && data.settings && data.settings.model) {
+          document.getElementById('statModel').innerText = data.settings.model;
+        }
+        const badge = document.getElementById('navQueueBadge');
+        if (badge && data.stats) {
+          badge.innerText = data.stats.pending_drafts || 0;
+        }
+      } catch (err) {
+        console.error('Failed to load stats', err);
+      }
+    }
+
+    function refreshAll(showFeedback = false) {
+      const btn = document.getElementById('btnGlobalRefresh');
+      if (showFeedback && btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span>';
+      }
+      Promise.all([loadStats(), loadDrafts(), loadTrending(), loadPosts()]).finally(() => {
+        if (showFeedback && btn) {
+          btn.disabled = false;
+          btn.innerText = 'Refresh';
+          showToast('Dashboard data refreshed', 'info');
+        }
+      });
+    }
+
+    function formatAngleLabel(angle) {
+      const labels = {
+        straight_news: 'Straight News',
+        context_explainer: 'Why It Matters',
+        engaging_angle: 'Engaging Angle',
+        analytical: 'Straight News',
+        contrarian: 'Why It Matters',
+        witty: 'Engaging Angle',
+        breaking_news: 'Breaking',
+        political_news: 'Political',
+        business_economy: 'Business',
+        quote_led: 'Quote',
+        explainer: 'Explainer'
+      };
+      return labels[angle] || (angle ? String(angle).replace(/_/g, ' ') : 'Straight News');
+    }
+
+    function imageCaption(draft) {
+      if (draft && draft.image_verified) return 'Source image (checked)';
+      if (draft && draft.image_source_url) return 'Source image';
+      return 'Attached image';
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Initial setup
+    const savedToken = getAuthToken();
+    if (savedToken) {
+      document.getElementById('tokenPreview').innerText = savedToken.slice(0, 4) + '••••';
+    }
+    refreshAll();
+
+    // Auto-poll intervals
+    setInterval(loadStats, 15000);
+    setInterval(loadDrafts, 40000);
+    // Background wire sync every 30 mins
+    setInterval(() => {
+      fetch('/api/dashboard/news/refresh', { method: 'POST', headers: getAuthHeaders() })
+        .then(res => res.json())
+        .then(data => { if (data.items) renderTrendingItems(data.items); })
+        .catch(() => {});
+    }, 30 * 60 * 1000);
+  
+    // ===== FEATURE 1: MULTI-SOURCE RESEARCH STUDIO =====
+    async function loadResearchReports(showToastFeedback = false) {
+      const container = document.getElementById('researchReportsList');
+      try {
+        const res = await fetch('/api/research/reports?limit=15', { headers: getAuthHeaders() });
+        if (!res.ok) return;
+        const reports = await res.json();
+        if (showToastFeedback) showToast(`Loaded ${reports.length} research reports`, 'info');
+        if (!reports || reports.length === 0) {
+          container.innerHTML = '<div class="empty-state">No research reports recorded yet. Enter a topic above to initiate investigation.</div>';
+          return;
+        }
+
+        container.innerHTML = reports.map(r => `
+          <div class="card" style="margin-bottom: 14px; border-left: 3px solid var(--primary);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+              <div>
+                <span class="badge badge-primary" style="margin-right: 6px;">Report #${r.id}</span>
+                <span class="badge" style="background: rgba(16,185,129,0.15); color: #34d399;">Confidence: ${Math.round(r.confidence_score * 100)}%</span>
+                <div style="font-size: 14px; font-weight: 700; color: #fff; margin-top: 4px;">${escapeHtml(r.topic)}</div>
+              </div>
+              <div style="font-size: 11px; color: var(--text-dim);">${new Date(r.created_at).toLocaleDateString()}</div>
+            </div>
+
+            <p style="font-size: 12.5px; color: var(--text); line-height: 1.5; margin-bottom: 12px;">${escapeHtml(r.executive_summary || r.what_happened)}</p>
+
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+              <span class="badge" style="background: rgba(59,130,246,0.12); color: #60a5fa;">✓ ${(r.verified_facts || []).length} Verified Facts</span>
+              <span class="badge" style="background: rgba(239,68,68,0.12); color: #f87171;">⚠️ ${(r.conflicting_info || []).length} Contradictions</span>
+              <span class="badge" style="background: rgba(245,158,11,0.12); color: #fbbf24;">? ${(r.unresolved_claims || []).length} Unresolved</span>
+              <span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">${(r.sources || []).length} Sources</span>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+              <button class="btn btn-secondary btn-sm" onclick="toggleReportDetails(${r.id})">Toggle Full Evidence</button>
+            </div>
+
+            <div id="report_details_${r.id}" style="display: none; margin-top: 14px; border-top: 1px solid var(--border-subtle); padding-top: 12px; font-size: 12px;">
+              ${(r.conflicting_info && r.conflicting_info.length > 0) ? `
+                <div style="margin-bottom: 12px; padding: 10px; background: rgba(239,68,68,0.08); border-radius: var(--radius-sm); border: 1px solid rgba(239,68,68,0.2);">
+                  <strong style="color: #f87171;">Disagreements & Contradictions:</strong>
+                  <ul style="margin: 6px 0 0 16px; color: var(--text);">
+                    ${r.conflicting_info.map(c => `<li><strong>${escapeHtml(c.claim || '')}:</strong> ${escapeHtml(c.contradiction_detail || '')}</li>`).join('')}
+                  </ul>
+                </div>` : ''}
+
+              <div style="margin-bottom: 10px;">
+                <strong style="color: #fff;">Key Sources & Primary Verification:</strong>
+                <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">
+                  ${(r.sources || []).map(s => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.25); padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+                      <div>
+                        <a href="${escapeHtml(s.url)}" target="_blank" style="color: var(--primary-text); font-weight: 500;">${escapeHtml(s.title || s.url)}</a>
+                        <div style="font-size: 11px; color: var(--text-dim);">${escapeHtml(s.publisher || 'Unknown')} · Score: ${Math.round((s.reliability_score || 0.7)*100)}%</div>
+                      </div>
+                      <div>
+                        ${s.is_primary ? '<span class="badge" style="background: rgba(16,185,129,0.2); color: #34d399;">Primary Govt/Wire</span>' : '<span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-dim);">News</span>'}
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        container.innerHTML = `<div class="empty-state" style="color: var(--danger-text);">Error loading research: ${err.message}</div>`;
+      }
+    }
+
+    function toggleReportDetails(id) {
+      const el = document.getElementById(`report_details_${id}`);
+      if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function triggerInvestigate() {
+      const input = document.getElementById('investigateInput');
+      const topic = (input ? input.value : '').trim();
+      if (!topic) {
+        showToast('Please enter a topic to investigate', 'error');
+        return;
+      }
+      const btn = document.getElementById('btnInvestigate');
+      const progress = document.getElementById('investigateProgress');
+      btn.disabled = true;
+      progress.style.display = 'flex';
+
+      try {
+        const res = await fetch('/api/research/investigate', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ query: topic, max_sources: 8 }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || 'Investigation failed');
+        }
+        const data = await res.json();
+        showToast(`Investigation complete: ${data.sources.length} sources analyzed`, 'success');
+        input.value = '';
+        loadResearchReports();
+      } catch (err) {
+        showToast('Investigation error: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        progress.style.display = 'none';
+      }
+    }
+
+    // ===== FEATURE 2: EVENT INTELLIGENCE & SAGA MEMORY =====
+    async function loadEventsTimeline(showToastFeedback = false) {
+      const container = document.getElementById('eventsList');
+      try {
+        const res = await fetch('/api/research/events?limit=20', { headers: getAuthHeaders() });
+        if (!res.ok) return;
+        const events = await res.json();
+        if (showToastFeedback) showToast(`Loaded ${events.length} active event sagas`, 'info');
+        if (!events || events.length === 0) {
+          container.innerHTML = '<div class="empty-state">No active event sagas tracked yet. As stories develop over time, chronological timelines will cluster here.</div>';
+          return;
+        }
+
+        container.innerHTML = events.map(e => `
+          <div class="card" style="margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+              <div>
+                <span class="badge badge-primary">${escapeHtml(e.category)}</span>
+                <span class="badge" style="background: rgba(16,185,129,0.15); color: #34d399;">${escapeHtml(e.status)}</span>
+                <h3 style="font-size: 15px; font-weight: 700; color: #fff; margin-top: 4px;">${escapeHtml(e.title)}</h3>
+              </div>
+              <div style="font-size: 11px; color: var(--text-dim);">Updated: ${new Date(e.latest_timestamp).toLocaleDateString()}</div>
+            </div>
+
+            <p style="font-size: 12.5px; color: var(--text-muted); line-height: 1.45; margin-bottom: 12px;">${escapeHtml(e.summary)}</p>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 10px;">
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                ${(e.entities || []).slice(0, 4).map(ent => `<span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-dim);">${escapeHtml(ent)}</span>`).join('')}
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="viewEventTimeline(${e.id})">View Timeline (${e.developments_count || 0})</button>
+            </div>
+
+            <div id="event_tree_${e.id}" style="display: none; margin-top: 12px; padding: 12px; background: rgba(0,0,0,0.3); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+              <div class="empty-state">Loading timeline developments...</div>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        container.innerHTML = `<div class="empty-state" style="color: var(--danger-text);">Error loading events: ${err.message}</div>`;
+      }
+    }
+
+    async function viewEventTimeline(eventId) {
+      const tree = document.getElementById(`event_tree_${eventId}`);
+      if (!tree) return;
+      if (tree.style.display === 'block') {
+        tree.style.display = 'none';
+        return;
+      }
+      tree.style.display = 'block';
+      tree.innerHTML = '<div class="empty-state"><span class="spinner"></span> Loading chronological milestones...</div>';
+
+      try {
+        const res = await fetch(`/api/research/events/${eventId}/timeline`, { headers: getAuthHeaders() });
+        if (!res.ok) throw new Error('Failed to load event timeline');
+        const data = await res.json();
+        const timeline = data.timeline || [];
+
+        if (timeline.length === 0) {
+          tree.innerHTML = '<div style="font-size: 12px; color: var(--text-dim);">No developments registered in this saga yet.</div>';
+          return;
+        }
+
+        tree.innerHTML = `
+          <div style="position: relative; padding-left: 18px; border-left: 2px solid var(--primary-subtle);">
+            ${timeline.map(d => `
+              <div style="margin-bottom: 12px; position: relative;">
+                <div style="position: absolute; left: -24px; top: 3px; width: 10px; height: 10px; border-radius: 50%; background: var(--primary);"></div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 11px; font-weight: 600; color: var(--primary-text);">${new Date(d.development_date).toLocaleDateString()}</span>
+                  <span class="badge" style="font-size: 10px; text-transform: uppercase;">${escapeHtml(d.delta_type)}</span>
+                </div>
+                <div style="font-size: 13px; font-weight: 600; color: #fff; margin: 2px 0;">${escapeHtml(d.title)}</div>
+                <div style="font-size: 12px; color: var(--text-dim); line-height: 1.4;">${escapeHtml(d.description)}</div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } catch (err) {
+        tree.innerHTML = `<div style="font-size: 12px; color: var(--danger-text);">Error: ${err.message}</div>`;
+      }
+    }
+
+    // ===== FEATURE 6: PERFORMANCE LEARNING ENGINE =====
+    async function loadPerformanceDNA(showToastFeedback = false) {
+      const container = document.getElementById('performanceContainer');
+      container.innerHTML = '<div class="empty-state"><span class="spinner"></span> Loading Editorial Learning Engine & Feedback Analytics...</div>';
+      try {
+        const [summaryRes, recsRes, perfRes] = await Promise.all([
+          fetch('/api/editorial/feedback/summary', { headers: getAuthHeaders() }),
+          fetch('/api/editorial/learning/recommendations', { headers: getAuthHeaders() }),
+          fetch('/api/analytics/performance/insights?days=30', { headers: getAuthHeaders() }),
+        ]);
+
+        const summary = summaryRes.ok ? await summaryRes.json() : {};
+        const recsData = recsRes.ok ? await recsRes.json() : { recommendations: [] };
+        const perf = perfRes.ok ? await perfRes.json() : {};
+
+        const recs = recsData.recommendations || [];
+        const isInsufficient = summary.insufficient_data;
+        const totalReviewed = summary.total_reviewed || 0;
+
+        container.innerHTML = `
+          <!-- Insufficient Data Warning Banner -->
+          ${isInsufficient ? `
+          <div style="background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3); border-radius: var(--radius-md); padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between;">
+            <div>
+              <div style="font-weight: 700; color: #fbbf24; font-size: 13.5px; margin-bottom: 3px;">
+                ⚠ Insufficient Operator Feedback Cohort (${totalReviewed} / ${summary.min_sample_threshold || 10} reviews)
+              </div>
+              <div style="font-size: 12px; color: var(--text-muted);">
+                The Editorial Learning Engine requires at least 10 real human decisions before drawing confident statistical conclusions or auto-proposing persona updates. Continue reviewing drafts in the queue.
+              </div>
+            </div>
+            <span class="badge" style="background: rgba(245,158,11,0.2); color: #fbbf24; font-weight: 700;">OBSERVING</span>
+          </div>` : ''}
+
+          <!-- Feedback Summary Metrics -->
+          <div class="stats-grid" style="margin-bottom: 20px;">
+            <div class="stat-card">
+              <div class="stat-label">Reviewed by Operator</div>
+              <div class="stat-val" style="color: #60a5fa;">${totalReviewed}</div>
+              <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">Total decisions recorded</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Approval Rate</div>
+              <div class="stat-val" style="color: #34d399;">${Math.round((summary.approval_rate || 0) * 100)}%</div>
+              <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">${summary.approval_count || 0} approved candidates</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Rejections</div>
+              <div class="stat-val" style="color: #f87171;">${summary.rejection_count || 0}</div>
+              <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">Filtered by operator</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Human In-Place Edits</div>
+              <div class="stat-val" style="color: #a78bfa;">${summary.edit_count || 0}</div>
+              <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">Avg reduction: ${summary.avg_edit_reduction_pct || 0}%</div>
+            </div>
+          </div>
+
+          <!-- Cohort Distributions -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+            <div class="card" style="margin-bottom: 0;">
+              <div style="font-size: 13.5px; font-weight: 700; color: #fff; margin-bottom: 12px;">Rejection Reasons Breakdown</div>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                ${Object.entries(summary.rejection_reasons_distribution || {}).map(([reason, cnt]) => `
+                  <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; font-size: 12px;">
+                    <span style="color: var(--text);">${reason.replace(/_/g, ' ')}</span>
+                    <span class="badge ${cnt > 0 ? 'badge-danger' : ''}" style="${cnt === 0 ? 'background: rgba(255,255,255,0.05); color: var(--text-dim);' : ''}">${cnt}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <div class="card" style="margin-bottom: 0;">
+              <div style="font-size: 13.5px; font-weight: 700; color: #fff; margin-bottom: 12px;">Critic Score Correlation & Angle Trends</div>
+              <div style="display: flex; flex-direction: column; gap: 10px; font-size: 12px;">
+                <div style="padding: 10px; background: rgba(0,0,0,0.2); border-radius: 4px;">
+                  <div style="color: var(--text-muted); margin-bottom: 2px;">Avg Critic Score (Approved Drafts):</div>
+                  <strong style="color: #34d399; font-size: 16px;">${summary.avg_critic_score_approved || 0} / 100</strong>
+                </div>
+                <div style="padding: 10px; background: rgba(0,0,0,0.2); border-radius: 4px;">
+                  <div style="color: var(--text-muted); margin-bottom: 2px;">Avg Critic Score (Rejected Drafts):</div>
+                  <strong style="color: #f87171; font-size: 16px;">${summary.avg_critic_score_rejected || 0} / 100</strong>
+                </div>
+                <div style="padding: 10px; background: rgba(0,0,0,0.2); border-radius: 4px;">
+                  <div style="color: var(--text-muted); margin-bottom: 4px;">Common Human Editing Patterns:</div>
+                  <div style="color: var(--text);">${(summary.common_editing_patterns || []).length > 0 ? summary.common_editing_patterns.join(', ') : 'None detected yet'}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Proposed Editorial Learning Recommendations -->
+          <div class="card" style="margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+              <div>
+                <div style="font-size: 14px; font-weight: 700; color: #fff;">Editorial Learning Engine: Proposed Recommendations</div>
+                <div style="font-size: 11.5px; color: var(--text-muted);">Proposals generated from observed human edits and rejection trends. Changes NEVER auto-apply without operator authorization.</div>
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="loadPerformanceDNA(true)">Scan For Patterns</button>
+            </div>
+
+            ${recs.length === 0 ? `
+              <div style="padding: 16px; background: rgba(0,0,0,0.2); border-radius: 6px; text-align: center; color: var(--text-dim); font-size: 12.5px;">
+                No pending recommendations. As you reject drafts with specific reasons or perform edits in the Review Queue, pattern recommendations will appear here for approval.
+              </div>
+            ` : `
+              <div style="display: flex; flex-direction: column; gap: 12px;">
+                ${recs.map(r => `
+                  <div style="padding: 14px; background: rgba(0,0,0,0.25); border-radius: var(--radius-sm); border-left: 3px solid ${r.status === 'applied' ? '#34d399' : (r.status === 'rejected' ? '#f87171' : '#6366f1')};">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                      <div>
+                        <strong style="color: #fff; font-size: 13px;">${escapeHtml(r.pattern_type.replace(/_/g, ' '))}</strong>
+                        <span class="badge" style="margin-left: 8px; text-transform: uppercase;">${escapeHtml(r.status)}</span>
+                      </div>
+                      <span class="badge" style="background: rgba(99,102,241,0.15); color: #a5b4fc;">${Math.round(r.confidence * 100)}% Confidence</span>
+                    </div>
+                    <p style="font-size: 12px; color: var(--text); line-height: 1.45; margin-bottom: 8px;">${escapeHtml(r.evidence_summary)}</p>
+                    <div style="font-size: 11.5px; color: var(--text-muted); background: rgba(0,0,0,0.2); padding: 8px; border-radius: 4px; margin-bottom: 10px; font-family: monospace;">
+                      Adjustment: ${escapeHtml(JSON.stringify(r.suggested_dna_adjustment))}
+                    </div>
+                    ${r.status === 'proposed' ? `
+                      <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-success btn-sm" style="background: #059669; color: #fff; font-size: 11px;" onclick="reviewRecommendation(${r.id}, 'approve')">Approve & Apply to Persona DNA</button>
+                        <button class="btn btn-secondary btn-sm" style="font-size: 11px;" onclick="reviewRecommendation(${r.id}, 'reject')">Reject Proposal</button>
+                      </div>
+                    ` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            `}
+          </div>
+
+          <!-- Persona DNA Version History & Rollback -->
+          <div class="card">
+            <div style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 6px;">Editorial Persona DNA Versioning & Safe Rollback</div>
+            <div style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 14px;">Every approved adjustment creates an immutable version snapshot. Restore any prior version instantly.</div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <input type="number" id="rollbackTargetVersion" placeholder="Target Version (e.g. 1)" style="width: 180px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: var(--radius-sm); color: #fff; padding: 6px 10px; font-size: 12.5px;" min="1">
+              <button class="btn btn-secondary btn-sm" onclick="rollbackPersonaDna()">Rollback to Version</button>
+            </div>
+          </div>
+        `;
+        if (showFeedback) showToast('Performance and editorial learning updated', 'success');
+      } catch (err) {
+        container.innerHTML = `<div class="empty-state" style="color: var(--danger-text);">Error loading learning engine: ${err.message}</div>`;
+      }
+    }
+
+    async function reviewRecommendation(recId, action) {
+      try {
+        const res = await fetch(`/api/editorial/learning/recommendations/${recId}/review`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ action })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(data.message || 'Recommendation updated', 'success');
+          loadPerformanceDNA();
+        } else {
+          showToast('Failed: ' + (data.detail || 'error'), 'error');
+        }
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+      }
+    }
+
+    async function rollbackPersonaDna() {
+      const v = parseInt(document.getElementById('rollbackTargetVersion').value);
+      if (!v || v < 1) { showToast('Provide a valid version number', 'error'); return; }
+      if (!confirm(`Are you sure you want to roll back persona to version ${v}?`)) return;
+      try {
+        const res = await fetch('/api/editorial/dna/rollback', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ target_version: v })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(data.message || 'Rollback successful', 'success');
+          loadPerformanceDNA();
+        } else {
+          showToast('Rollback failed: ' + (data.detail || 'error'), 'error');
+        }
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+      }
+    }
+
+
+        // ===== QUALITY & FACT-CHECK MODAL =====
+    async function openQualityModal(draftId) {
+      const modal = document.getElementById('qualityModal');
+      const content = document.getElementById('modalQualityContent');
+      modal.style.display = 'flex';
+      content.innerHTML = '<div class="empty-state"><span class="spinner"></span> Loading critic & fact-check report...</div>';
+
+      try {
+        const res = await fetch(`/api/editorial/evaluations/${draftId}`, { headers: getAuthHeaders() });
+        if (!res.ok) throw new Error('Evaluation report not found');
+        const data = await res.json();
+        const ev = data.evaluation || {};
+        const alts = data.alternative_angles || [];
+
+        content.innerHTML = `
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; background: rgba(255,255,255,0.03); padding: 12px; border-radius: var(--radius-md);">
+            <div>
+              <div style="font-size: 12px; color: var(--text-dim);">Quality Score</div>
+              <div style="font-size: 24px; font-weight: 700; color: ${ev.overall_score >= 75 ? '#34d399' : '#fbbf24'};">${ev.overall_score || 0} / 100</div>
+            </div>
+            <div>
+              <span class="badge ${ev.verdict === 'approved' ? 'badge-success' : 'badge-danger'}" style="font-size: 12px; padding: 4px 10px; text-transform: uppercase;">${escapeHtml(ev.verdict || 'approved')}</span>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 16px;">
+            <div style="font-size: 12px; font-weight: 600; color: #fff; margin-bottom: 8px;">Weighted Scoring Breakdown:</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
+              <div style="background: rgba(0,0,0,0.25); padding: 8px; border-radius: 4px;">Factual Grounding (25%): <strong>${ev.factual_score || 0}%</strong></div>
+              <div style="background: rgba(0,0,0,0.25); padding: 8px; border-radius: 4px;">Originality (20%): <strong>${ev.originality_score || 0}%</strong></div>
+              <div style="background: rgba(0,0,0,0.25); padding: 8px; border-radius: 4px;">Insightfulness (20%): <strong>${ev.insight_score || 0}%</strong></div>
+              <div style="background: rgba(0,0,0,0.25); padding: 8px; border-radius: 4px;">Naturalness (15%): <strong>${ev.naturalness_score || 0}%</strong></div>
+              <div style="background: rgba(0,0,0,0.25); padding: 8px; border-radius: 4px;">Persona Fit (10%): <strong>${ev.persona_score || 0}%</strong></div>
+              <div style="background: rgba(0,0,0,0.25); padding: 8px; border-radius: 4px;">Clarity (10%): <strong>${ev.clarity_score || 0}%</strong></div>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 16px;">
+            <div style="font-size: 12px; font-weight: 600; color: #fff; margin-bottom: 4px;">Critic Reasoning:</div>
+            <p style="font-size: 12.5px; color: var(--text); line-height: 1.5; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px;">${escapeHtml(ev.critic_reasoning || 'No issues identified.')}</p>
+          </div>
+
+          ${(ev.flags && ev.flags.length > 0) ? `
+          <div style="margin-bottom: 16px;">
+            <div style="font-size: 12px; font-weight: 600; color: #f87171; margin-bottom: 6px;">Flags Detected:</div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              ${ev.flags.map(f => `<span class="badge" style="background: rgba(239,68,68,0.15); color: #f87171;">${escapeHtml(f)}</span>`).join('')}
+            </div>
+          </div>` : ''}
+
+          ${alts.length > 0 ? `
+          <div style="margin-top: 16px; border-top: 1px solid var(--border-subtle); padding-top: 14px;">
+            <div style="font-size: 12.5px; font-weight: 600; color: #fff; margin-bottom: 10px;">Alternative Draft Angles (${alts.length}):</div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              ${alts.map(alt => `
+                <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 10px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span class="badge badge-primary" style="text-transform: capitalize;">${escapeHtml(alt.angle || 'angle')}</span>
+                    <button class="btn btn-primary btn-sm" onclick="switchDraftAngle(${draftId}, '${alt.angle}')">Switch to this Angle</button>
+                  </div>
+                  <div style="font-size: 12px; color: var(--text); line-height: 1.45;">${escapeHtml((alt.parts || []).join(' '))}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>` : ''}
+        `;
+      } catch (err) {
+        content.innerHTML = `<div style="font-size: 12px; color: var(--danger-text);">Error loading quality report: ${err.message}</div>`;
+      }
+    }
+
+    function closeQualityModal() {
+      const modal = document.getElementById('qualityModal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    async function switchDraftAngle(draftId, targetAngle) {
+      try {
+        const res = await fetch('/api/editorial/switch-angle', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ draft_id: draftId, target_angle: targetAngle }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || 'Switch angle failed');
+        }
+        showToast(`Switched draft to ${targetAngle} angle`, 'success');
+        closeQualityModal();
+        loadDrafts();
+      } catch (err) {
+        showToast('Switch angle error: ' + err.message, 'error');
+      }
+    }
+
+  </script>
+</body>
+</html>

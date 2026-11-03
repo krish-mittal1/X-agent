@@ -1,0 +1,38 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: techx
+      POSTGRES_PASSWORD: techx
+      POSTGRES_DB: techx
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U techx -d techx"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Container networking overrides the localhost URL from .env.
+      DATABASE_URL: postgresql+asyncpg://techx:techx@db:5432/techx
+      API_HOST: 0.0.0.0
+      API_PORT: "8000"
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    # The API is bound to all interfaces in the container; put it behind an
+    # authenticated reverse proxy before exposing it to the internet.
+
+volumes:
+  pgdata:

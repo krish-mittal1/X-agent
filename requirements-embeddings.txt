@@ -1,0 +1,4 @@
+# Local embedding runtime (no paid embedding API).
+# CPU wheels: pip install -r requirements-embeddings.txt --extra-index-url https://download.pytorch.org/whl/cpu
+sentence-transformers==6.2.0
+torch==2.15.0

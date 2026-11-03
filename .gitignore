@@ -1,0 +1,49 @@
+# secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+
+# local data / logs / caches
+data/
+logs/
+*.log
+*.sqlite
+*.db
+.huggingface/
+.cache/
+model_cache/
+screenshots/
+
+# Local browser state, generated media, exploratory runs, and pilot artefacts.
+.brave_profile/
+.temp_media/
+scratch/
+backup_*.json
+pilot_*.json
+persona_*.json
+phase*_prompt.txt
+*.png
+
+# editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# build
+dist/
+build/
+*.egg-info/

@@ -1,0 +1,35 @@
+[project]
+name = "tech-x-agent"
+version = "0.1.0"
+description = "Research-driven X account agent with persistent RAG memory and controlled autonomy"
+requires-python = ">=3.12,<3.13"
+readme = "README.md"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+markers = [
+  "integration: requires a live PostgreSQL+pgvector database",
+  "policy: deterministic platform-policy gate tests",
+]
+filterwarnings = ["ignore::DeprecationWarning:pytest_asyncio.*"]
+
+[tool.mypy]
+python_version = "3.12"
+check_untyped_defs = true
+ignore_missing_imports = true
+warn_unused_ignores = false
+exclude = ["migrations/", "tests/"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [".venv", "migrations/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC"]
+ignore = ["B008", "E501", "UP047"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "B011"]
