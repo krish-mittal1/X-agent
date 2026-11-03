@@ -17,7 +17,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from app.agent.writer import ContentWriter
 from app.config import Settings, get_settings
@@ -40,6 +40,7 @@ REQUIRED_CATEGORIES = (
     "geopolitics", "defence", "technology_science", "infrastructure", "sports",
     "public_statement",
 )
+PILOT_DATABASE_NAME = "x_agent_pilot"
 
 
 class PilotStopError(RuntimeError):
@@ -98,8 +99,8 @@ def _pilot_settings() -> tuple[Settings, int]:
         raise PilotStopError("configured Gemini model is not in PILOT_ALLOWED_MODELS")
     pilot_url = _required_env("PILOT_DATABASE_URL")
     database_name = urlparse(pilot_url).path.lstrip("/").split("?", 1)[0]
-    if not database_name.startswith("x_agent_pilot") or pilot_url == base.database_url:
-        raise PilotStopError("PILOT_DATABASE_URL must name a distinct x_agent_pilot database")
+    if database_name != PILOT_DATABASE_NAME or pilot_url == base.database_url:
+        raise PilotStopError("PILOT_DATABASE_URL must name the distinct x_agent_pilot database")
     if not base.gemini_api_key:
         raise PilotStopError("Gemini credentials are not configured")
     # Retry is zero so each counted provider attempt represents at most one request.
@@ -220,7 +221,7 @@ async def run(manifest: Path, report_path: Path, account_handle: str) -> None:
                 break
             except ContentGenerationError as exc:
                 message = str(exc)
-                if any(term in message.lower() for term in ("authentication", "quota", "billing", "rate limit")):
+                if _is_provider_safety_error(message):
                     stopped_reason = f"ContentGenerationError: {message}"
                     break
                 results.append(
@@ -232,11 +233,15 @@ async def run(manifest: Path, report_path: Path, account_handle: str) -> None:
                 )
                 continue
             except Exception as exc:  # Preserve the failure in the factual pilot record.
+                message = f"{type(exc).__name__}: {exc}"
+                if _is_provider_safety_error(message):
+                    stopped_reason = message
+                    break
                 results.append(
                     {
                         "category": candidate.category,
                         "source_provenance": {"id": candidate.source_document_id},
-                        "pipeline_failure": f"{type(exc).__name__}: {exc}",
+                        "pipeline_failure": message,
                     }
                 )
                 continue
@@ -275,6 +280,27 @@ async def run(manifest: Path, report_path: Path, account_handle: str) -> None:
     report_path.write_text(json.dumps(summary, indent=2, default=str), encoding="utf-8")
     if stopped_reason:
         raise PilotStopError(stopped_reason)
+
+
+def _is_provider_safety_error(message: str) -> bool:
+    """Stop rather than continue if an error could signal billable provider access."""
+    lowered = message.lower()
+    return any(
+        term in lowered
+        for term in (
+            "authentication",
+            "unauthorized",
+            "forbidden",
+            "api key",
+            "quota",
+            "billing",
+            "rate limit",
+            "rate_limited",
+            "http 401",
+            "http 403",
+            "http 429",
+        )
+    )
 
 
 def main() -> None:

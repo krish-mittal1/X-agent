@@ -52,8 +52,8 @@ settings. ClaimVerifier and PolicyGate remain in place; this work did not alter
 either.
 
 The operator must run the pilot against a **separate, migrated** PostgreSQL
-database whose name begins `x_agent_pilot`. The runner refuses an identical
-database URL or a database name outside that prefix. This protects the
+database named exactly `x_agent_pilot`. The runner refuses an identical
+database URL or any other database name. This protects the
 configured local/production database from pilot writes; it does not modify or
 reset either database.
 
@@ -72,7 +72,7 @@ are supplied by the operator at execution time:
 - `PILOT_MAX_COST_USD=0.00`
 - `PILOT_MAX_REQUESTS` set to an integer between 1 and 100
 - `PILOT_ALLOWED_MODELS` containing the configured Gemini model
-- `PILOT_DATABASE_URL` naming a separate `x_agent_pilot...` database
+- `PILOT_DATABASE_URL` naming the separate `x_agent_pilot` database
 
 It also requires `SCHEDULER_ENABLED=false`, forces Gemini retry count to zero,
 counts provider attempts against the operator cap, and stops on authentication,
