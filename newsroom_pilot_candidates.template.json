@@ -1,0 +1,14 @@
+{
+  "candidates": [
+    {"category": "indian_politics", "source_document_id": 0},
+    {"category": "state_governance", "source_document_id": 0},
+    {"category": "indian_economy", "source_document_id": 0},
+    {"category": "indian_business", "source_document_id": 0},
+    {"category": "geopolitics", "source_document_id": 0},
+    {"category": "defence", "source_document_id": 0},
+    {"category": "technology_science", "source_document_id": 0},
+    {"category": "infrastructure", "source_document_id": 0},
+    {"category": "sports", "source_document_id": 0},
+    {"category": "public_statement", "source_document_id": 0}
+  ]
+}
