@@ -13,6 +13,11 @@ database passwords if `psql` is configured to do so.
 ## Pilot-only configuration contract
 
 The pilot runner is [scripts/run_newsroom_pilot.py](scripts/run_newsroom_pilot.py).
+
+When using the lightweight disposable Docker image for a controlled pilot, pass
+`EMBEDDING_PROVIDER=hashing`. The image does not include the optional local
+sentence-transformers runtime; hashing keeps duplicate-detection embeddings
+available without downloading a model or calling an external embedding service.
 It has no safe defaults that can begin real generation.
 
 ### Required command-line arguments

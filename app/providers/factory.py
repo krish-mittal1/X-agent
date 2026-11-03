@@ -85,8 +85,10 @@ class LLMService:
         self.provider = provider
         self._session_factory = session_factory
         self.account_id = account_id
-        hook = getattr(provider, "usage_hook", None)
-        if hook is not None:
+        # GeminiProvider exposes this optional hook as ``None`` until a caller
+        # installs it.  Check for the capability rather than its current value,
+        # otherwise real provider calls never persist their usage records.
+        if hasattr(provider, "usage_hook"):
             provider.usage_hook = self._record_usage  # type: ignore[attr-defined]
 
     @property

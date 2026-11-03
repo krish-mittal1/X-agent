@@ -96,12 +96,12 @@ async def test_successful_call_records_usage(settings, engine, account) -> None:
 
     provider = FakeProvider()
     service = LLMService(settings, provider, db_module.get_session_factory(), account.id)  # type: ignore[arg-type]
+    assert provider.usage_hook is not None
     response = await service.provider.generate([LLMMessage("user", "hi")])
     assert response.text == "ok"
-    # usage_hook is only called by real providers; simulate one to verify persistence
     from app.providers.base import UsageRecord
 
-    await service._record_usage(  # noqa: SLF001 - deliberate persistence test
+    await provider.usage_hook(
         UsageRecord("fake", "fake-model", "test", 10, 5, 1.0, 0.001, True)
     )
     async with session_scope() as session:
