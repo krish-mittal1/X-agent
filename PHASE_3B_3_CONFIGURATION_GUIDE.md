@@ -92,6 +92,16 @@ The pilot runner is a direct script, not a FastAPI/uvicorn process. It does not
 import or call APScheduler. Its configuration check independently refuses to
 start if `SCHEDULER_ENABLED` is true.
 
+For the Docker-backed local pilot database prepared on this workstation, use the
+non-persistent activation helper in the same PowerShell session as preflight:
+
+```powershell
+.\scripts\set_pilot_environment.ps1 -PilotOperatorAuthorization AUTHORIZED_FREE_TIER_PILOT -PilotMaxRequests <approved-request-cap> -PilotAllowedModel <approved-model-id> -PilotDbPassword <x_agent_pilot_app-password>
+```
+
+It changes process environment variables only and never writes a credential to
+`.env` or disk.
+
 The read-only preflight below is the executable verification: a successful JSON
 result contains `"scheduler_enabled": false` and
 `"external_publishing_capability": false`. It does not start the application,
@@ -106,11 +116,10 @@ The pgvector extension must already be installed on the PostgreSQL server.
 
 ```sql
 -- Connect to the PostgreSQL maintenance database, not x_agent or techx.
-CREATE ROLE x_agent_pilot_owner NOLOGIN;
 CREATE ROLE x_agent_pilot_migrator LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT PASSWORD '<migrator-password>';
 CREATE ROLE x_agent_pilot_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT PASSWORD '<application-password>';
 
-CREATE DATABASE x_agent_pilot OWNER x_agent_pilot_owner;
+CREATE DATABASE x_agent_pilot OWNER x_agent_pilot_migrator;
 \connect x_agent_pilot
 
 CREATE EXTENSION vector;
