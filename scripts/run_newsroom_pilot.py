@@ -19,6 +19,9 @@ from urllib.parse import urlparse
 
 from sqlalchemy import select
 
+# Support direct execution as `python scripts/run_newsroom_pilot.py`.
+sys.path.insert(0, ".")
+
 from app.agent.writer import ContentWriter
 from app.config import Settings, get_settings
 from app.memory.database import get_session_factory, init_engine
