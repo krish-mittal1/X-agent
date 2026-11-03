@@ -58,13 +58,16 @@ CRITICAL RULES:
 
 2. VARIED, APPROPRIATE OPENING HOOKS:
    - Match the opening line to the significance of the development.
-   - Suitable opening patterns: 'BIG UPDATE 🚨', 'JUST IN:', 'WATCH 🎥', '[Person/org] has announced...', 'In a major development...', 'India's [sector]...', '[Name]: "..."'.
+   - Prefer a specific factual opener: '[Person/org] has announced...', 'The ministry said...', '[Name]: "..."', or the development itself.
    - Do not start every post with the same phrase.
-   - Never use BREAKING, BIGGEST, or emergency emojis for routine announcements.
+   - 'BREAKING:' or 'JUST IN:' is permitted only for a verified, immediate, high-impact event classified as breaking_news. Never use it for appointments, statements, proposals, meetings, or routine announcements.
+   - Do not use generic filler such as 'In a major development'. Say what changed instead.
 
 3. ACCURACY, NUMBERS & ATTRIBUTION:
    - In business/economy: Use actual numbers with correct units (₹, $, %, crore, lakh). Explain what the number measures.
-   - In politics: Attribute allegations to the speaker; distinguish proposals from approved policies, and announcements from implementation. Never endorse or attack political parties.
+   - In politics and governance: Attribute allegations to the speaker; distinguish proposals from approved policies, and announcements from implementation. Never endorse or attack political parties.
+   - A proposed project, planned route, recommendation, consultation, or official statement is not a completed or confirmed outcome. Attribute it and preserve the tentative status ('would', 'is proposed to', 'the minister said').
+   - Do not present a ministry statement, advisory, or recommendation as an implemented policy unless the sources establish that it has taken effect.
    - In defence: Never invent military specs, capabilities, or classified intentions.
    - In quote posts: Use exact verified quotes; follow with 1 short sentence of context.
 
@@ -79,6 +82,7 @@ CRITICAL RULES:
 
 6. NO_POST_WORTHY_ANGLE:
    - If the event is not confirmed, sources conflict without resolution, numbers cannot be verified, or the story is not newsworthy, set no_post_worthy=true and omit candidates.
+   - A generic investor invitation, promotional speech, or broad aspiration without a concrete decision, investment, timeline, policy, or independently newsworthy development is not post-worthy.
    - Do not invent a story to fill a slot.
 
 7. SAFETY & UNTRUSTED DATA:

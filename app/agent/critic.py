@@ -71,9 +71,30 @@ _ACADEMIC_CONNECTIVES = [
 
 _HYPE_OPENERS = (
     r"^breaking\b",
+    r"^just in\b",
     r"^shocking\b",
     r"^biggest\b",
     r"^huge\b",
+)
+
+_GENERIC_NEWSROOM_PHRASES = {
+    r"\bin a major development\b": "in a major development",
+}
+
+_PROMOTIONAL_NON_NEWS = re.compile(
+    r"\b(?:urged|invited|encouraged)\s+(?:investors|companies|businesses)\s+"
+    r"to\s+(?:explore|consider|invest)\b",
+    flags=re.IGNORECASE,
+)
+
+_PROPOSAL_AS_OUTCOME = re.compile(
+    r"\b(?:proposed|proposal|planned|plans?|approved in principle)\b.{0,180}\bwill\b",
+    flags=re.IGNORECASE | re.DOTALL,
+)
+
+_UNCLEAR_POLICY_STATUS = re.compile(
+    r"\b(?:should|will|must)\s+now\s+(?:use|utili[sz]e|require|replace|transition)\b",
+    flags=re.IGNORECASE,
 )
 
 _EMOJI_PATTERN = re.compile(
@@ -223,6 +244,17 @@ class EditorialCriticService:
             flags.append("repetitive_hook")
             suggestions.append("Use a specific opening instead of a generic thread intro.")
 
+        generic_newsroom_hits = [
+            name for pat, name in _GENERIC_NEWSROOM_PHRASES.items() if re.search(pat, lowered)
+        ]
+        if generic_newsroom_hits:
+            originality_score -= 15.0
+            flags.append("generic_newsroom_phrase")
+            suggestions.append(
+                "Replace generic newsroom filler with the specific development: "
+                f"{', '.join(generic_newsroom_hits)}."
+            )
+
         # Do not reward aggression or controversy for its own sake.
         if re.search(r"\b(?:destroy|destroyed|humiliated|owned|meltdown)\b", lowered):
             originality_score -= 10.0
@@ -305,6 +337,13 @@ class EditorialCriticService:
             persona_score -= 10.0
             flags.append("format_mismatch")
             suggestions.append("Business posts should include a verified figure with units.")
+        if _PROMOTIONAL_NON_NEWS.search(draft_text):
+            persona_score -= 25.0
+            flags.append("promotional_non_news")
+            suggestions.append(
+                "Do not treat a generic investor invitation as a news update; require a concrete decision, "
+                "investment, timeline, policy, or other verified development."
+            )
         persona_score = max(20.0, min(100.0, persona_score))
 
         # 6. NEWS CLARITY, OPENING, LENGTH, IMAGE (10%)
@@ -324,6 +363,18 @@ class EditorialCriticService:
             clarity_score -= 15.0
             flags.append("overhyped_hook")
             suggestions.append("Match the hook to the importance of the development.")
+        if _PROPOSAL_AS_OUTCOME.search(draft_text):
+            clarity_score -= 20.0
+            flags.append("proposal_as_outcome")
+            suggestions.append(
+                "Keep proposals and plans tentative; attribute the statement and do not write a proposed outcome as confirmed."
+            )
+        if _UNCLEAR_POLICY_STATUS.search(draft_text):
+            clarity_score -= 20.0
+            flags.append("unclear_policy_status")
+            suggestions.append(
+                "State whether this is a recommendation, announcement, or implemented policy; do not imply it is already in force."
+            )
         if image_url and image_relevant is False:
             clarity_score -= 20.0
             flags.append("irrelevant_image")
@@ -362,10 +413,21 @@ class EditorialCriticService:
                 "Draft needs revision: forced contrarian hot take detected "
                 f"({', '.join(suggestions)})."
             )
-        elif "generic_ai_phrase" in flags or "repetitive_hook" in flags:
+        elif any(
+            flag in flags
+            for flag in (
+                "generic_ai_phrase",
+                "repetitive_hook",
+                "overhyped_hook",
+                "generic_newsroom_phrase",
+                "promotional_non_news",
+                "proposal_as_outcome",
+                "unclear_policy_status",
+            )
+        ):
             verdict = "needs_revision"
             critic_reasoning = (
-                "Draft needs revision: generic AI phrases or repetitive hooks detected "
+                "Draft needs revision: newsroom-quality issue detected "
                 f"({', '.join(suggestions)})."
             )
         elif overall_score >= 70.0:

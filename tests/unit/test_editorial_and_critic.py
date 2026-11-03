@@ -59,6 +59,48 @@ def test_critic_rejects_on_contradiction_hard_stop() -> None:
     assert "factual_contradiction" in result.flags
 
 
+def test_critic_requires_revision_for_routine_just_in_label() -> None:
+    result = EditorialCriticService().evaluate(
+        "JUST IN: Rajesh Kumar has been appointed Director General of Police for Arunachal Pradesh.",
+        topic="Arunachal Pradesh police appointment",
+        angle="straight_news",
+        news_format="political_news",
+    )
+
+    assert "overhyped_hook" in result.flags
+    assert result.verdict == "needs_revision"
+
+
+def test_critic_requires_concrete_news_and_tentative_policy_language() -> None:
+    critic = EditorialCriticService()
+
+    promotional = critic.evaluate(
+        "In a major development, the board urged investors to explore opportunities in the space sector.",
+        topic="CII summit",
+        angle="straight_news",
+        news_format="straight_news",
+    )
+    proposal = critic.evaluate(
+        "The proposed Delhi-Guwahati bullet train project will pass through the Chicken's Neck corridor.",
+        topic="Delhi-Guwahati bullet train",
+        angle="straight_news",
+        news_format="straight_news",
+    )
+    policy = critic.evaluate(
+        "The ministry said welfare payments should now utilize EPIC numbers with biometrics.",
+        topic="Welfare payments",
+        angle="straight_news",
+        news_format="political_news",
+    )
+
+    assert {"generic_newsroom_phrase", "promotional_non_news"} <= set(promotional.flags)
+    assert promotional.verdict == "needs_revision"
+    assert "proposal_as_outcome" in proposal.flags
+    assert proposal.verdict == "needs_revision"
+    assert "unclear_policy_status" in policy.flags
+    assert policy.verdict == "needs_revision"
+
+
 def test_editorial_candidate_sorting() -> None:
     cand_low = EditorialCandidate(
         angle="witty",
