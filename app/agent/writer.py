@@ -5,11 +5,12 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.agent.critic import EditorialCriticService
 from app.agent.editorial_engine import EditorialEngine
-from app.agent.formats import requires_numeric_evidence
+from app.agent.formats import choose_format, requires_numeric_evidence
 from app.agent.image_relevance import select_document_image
 from app.config import Settings
 from app.logging_config import get_logger
@@ -84,6 +85,28 @@ class ContentWriter:
             raise ValueError("no usable source documents supplied")
         return documents
 
+    async def _recent_formats(
+        self, session: AsyncSession, account_id: int, limit: int = 5
+    ) -> list[str]:
+        """Return prior validation formats for the configured format mix.
+
+        Story classification and editorial angle are independent of this
+        selection. The configured mix only controls deterministic policy
+        latitude (for example, whether an explicitly selected joke format may
+        contain hyperbolic numbers without source-backed reporting claims).
+        """
+        rows = await session.execute(
+            select(Draft.policy_report)
+            .where(Draft.account_id == account_id, Draft.kind == "original")
+            .order_by(Draft.id.desc())
+            .limit(limit)
+        )
+        return [
+            report["validation_format"]
+            for report in rows.scalars()
+            if isinstance(report, dict) and isinstance(report.get("validation_format"), str)
+        ]
+
     async def create_original_draft(
         self, account_id: int, source_ids: list[int]
     ) -> DraftOutcome:
@@ -97,6 +120,9 @@ class ContentWriter:
                 return self._outcome_from_draft(existing)
             documents = await self._load_sources(session, account_id, source_ids)
             primary_doc = documents[0]
+            validation_format = choose_format(
+                self.settings, await self._recent_formats(session, account_id)
+            ).format
 
         # -------------------------------------------------------------------
         # 1. Multi-Source Research Engine (Stage 1)
@@ -176,7 +202,7 @@ class ContentWriter:
         parts = [normalize_typography(part) for part in champion.parts if part.strip()]
         parts = [part for part in parts if part]
         text_rules: TextRuleReport = validate_text_rules(
-            self.settings, parts, format=champion.news_format
+            self.settings, parts, format=validation_format
         )
         joined = "\n\n".join(parts)
 
@@ -214,7 +240,7 @@ class ContentWriter:
         if verification.contradicted_claims > 0:
             blocking.append(f"draft contains {verification.contradicted_claims} contradicted claims")
 
-        if requires_numeric_evidence(champion.news_format) and has_unlisted_quantitative_assertion(
+        if requires_numeric_evidence(validation_format) and has_unlisted_quantitative_assertion(
             joined, champion.claims
         ):
             blocking.append("post contains quantitative claims without a declared supporting quote")
@@ -258,6 +284,7 @@ class ContentWriter:
                 "critic": champion.critic_score.model_dump(mode="json") if champion.critic_score else None,
                 "trending": any(doc.metadata_.get("trending") for doc in documents),
                 "format": champion.news_format,
+                "validation_format": validation_format,
                 "blocking": blocking,
                 "research_report_id": report.id,
                 "event_id": event.id,
