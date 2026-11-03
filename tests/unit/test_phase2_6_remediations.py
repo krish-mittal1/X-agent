@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import SecretStr
 
 from app.analytics.performance import PerformanceAnalyticsService
 from app.config import Settings
@@ -190,7 +191,19 @@ def test_contradicted_claim_triggers_hard_stop():
 # ==============================================================================
 
 def test_editorial_endpoints_require_admin_auth():
-    app = create_app()
+    # Give this auth test an explicit token. Without one, the intended
+    # fail-closed behaviour is 503 (admin API disabled), which is covered by
+    # the integration health test.
+    app = create_app(
+        Settings(
+            _env_file=None,
+            app_env="test",
+            admin_api_token=SecretStr("test-admin-token"),
+            x_publishing_mode="local_draft",
+            publishing_enabled=False,
+            dry_run=True,
+        )
+    )
     client = TestClient(app)
 
     # 1. Unauthenticated requests must be rejected with 401 or 403

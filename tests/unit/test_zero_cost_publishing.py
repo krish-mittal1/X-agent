@@ -120,7 +120,8 @@ def test_content_generation_works_without_x_credentials() -> None:
         now=datetime.now(UTC),
     )
     assert len(messages) == 2
-    assert "STANDALONE POST" in messages[1].content
+    assert "FORMAT FOR THIS POST: straight_news" in messages[1].content
+    assert "Return JSON with:" in messages[1].content
 
 
 # 5. RSS ingestion still works.
