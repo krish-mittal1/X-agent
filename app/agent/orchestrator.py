@@ -63,9 +63,15 @@ class AgentOrchestrator:
         self.writer = ContentWriter(
             settings, llm, session_factory, embedder=embedder
         )
-        self.publisher = Publisher(
-            settings, session_factory, x_client, embedder=embedder
-        ) if x_client is not None else None
+        can_publish = (x_client is not None) or (
+            settings.x_publishing_mode == "brave_cdp"
+            and bool(settings.x_auth_token and settings.x_ct0)
+        )
+        self.publisher = (
+            Publisher(settings, session_factory, x_client, embedder=embedder)
+            if can_publish
+            else None
+        )
 
     async def _candidates(self, account_id: int) -> list:
         async with self.session_factory() as session:
