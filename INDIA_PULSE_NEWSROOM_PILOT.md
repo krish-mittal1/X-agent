@@ -4,12 +4,15 @@ Date: 2026-11-03 (Asia/Kolkata)
 
 ## Status
 
-**BLOCKED — no real-world generation or staging was run.** This is a truthful
-preflight report, not a simulated successful pilot.
+**Superseded 2026-11-04 — the pilot was subsequently executed.** The blockers in
+this preflight were cleared: the isolated pilot database was created, the
+scheduler was disabled for the pilot process, and authorized generation ran.
+Ten candidates were processed in `local_draft` mode; see
+[PHASE_3B_4_PILOT_RESULTS.md](PHASE_3B_4_PILOT_RESULTS.md) for the recorded
+results, the critic-gate verification, and the remaining open issues.
 
-The requested pilot requires both a database-backed pipeline and authorized
-model generation. Neither condition is currently available without violating
-the operating rules below.
+The section below records the preflight conditions as they stood on
+2026-11-03, before that run.
 
 ## Safety controls verified
 

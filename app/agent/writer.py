@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+import re
 from typing import Any
 
 from sqlalchemy import select
@@ -45,6 +46,19 @@ from app.schemas.content import (
 )
 
 logger = get_logger(__name__)
+
+
+def ensure_two_part_layout(text: str) -> str:
+    """Ensure a single-post update has a clean 2-part mobile layout separated by a blank line."""
+    if "\n" in text:
+        return text
+    # Match the first sentence ending with punctuation (.!?), followed by whitespace and a subsequent sentence
+    m = re.match(r"^([^.!?]+[.!?])\s+(.+)$", text)
+    if m:
+        first_sentence, rest = m.group(1).strip(), m.group(2).strip()
+        if len(first_sentence) >= 20 and len(rest) >= 20 and len(f"{first_sentence}\n\n{rest}") <= 280:
+            return f"{first_sentence}\n\n{rest}"
+    return text
 
 
 class ContentWriter:
@@ -303,6 +317,16 @@ class ContentWriter:
                 if image_decision.credit:
                     policy_report_dict["image_credit"] = image_decision.credit
 
+            if validation_format != "thread" and len(parts) == 2 and len(f"{parts[0]}\n\n{parts[1]}") <= 280:
+                body_text = f"{parts[0]}\n\n{parts[1]}"
+                thread_parts_list: list[str] = []
+            else:
+                body_text = parts[0] if parts else ""
+                thread_parts_list = parts[1:]
+
+            if not thread_parts_list and "\n" not in body_text:
+                body_text = ensure_two_part_layout(body_text)
+
             draft = await DraftRepository.create(
                 session,
                 account_id=account_id,
@@ -311,8 +335,8 @@ class ContentWriter:
                 idempotency_key=key,
                 topic=selection_result.topic[:500],
                 title=selection_result.topic[:500],
-                body=parts[0] if parts else "",
-                thread_parts=parts[1:],
+                body=body_text,
+                thread_parts=thread_parts_list,
                 tone=champion.angle,
                 rationale=champion.rationale,
                 source_document_ids=[doc.id for doc in documents],

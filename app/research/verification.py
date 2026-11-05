@@ -54,8 +54,20 @@ _PRIMARY_DOMAINS = (
 )
 
 
+import html
+
 def normalize_for_match(text: str) -> str:
-    lowered = text.lower().replace("“", '"').replace("”", '"').replace("’", "'")
+    unescaped = html.unescape(text or "")
+    lowered = (
+        unescaped.lower()
+        .replace("“", '"')
+        .replace("”", '"')
+        .replace("’", "'")
+        .replace("‘", "'")
+        .replace("—", "-")
+        .replace("–", "-")
+        .replace("\xa0", " ")
+    )
     return _WHITESPACE.sub(" ", lowered).strip()
 
 
@@ -63,7 +75,25 @@ def quote_supported(quote: str, source_text: str) -> bool:
     normalized_quote = normalize_for_match(quote)
     if len(normalized_quote) < 12:
         return False
-    return normalized_quote in normalize_for_match(source_text)
+    norm_source = normalize_for_match(source_text)
+    if normalized_quote in norm_source:
+        return True
+
+    trimmed = normalized_quote.strip(" '\".,;:!?-")
+    if len(trimmed) >= 12 and trimmed in norm_source:
+        return True
+
+    # Token overlap check for slight phrasing or formatting variances in scraped text
+    q_tokens = _claim_tokens(normalized_quote)
+    if len(q_tokens) >= 3:
+        s_tokens = _claim_tokens(norm_source)
+        shared = q_tokens & s_tokens
+        q_nums = _numbers(normalized_quote)
+        s_nums = _numbers(norm_source)
+        if q_nums.issubset(s_nums) and (len(shared) / len(q_tokens) >= 0.8):
+            return True
+
+    return False
 
 
 def _claim_tokens(text: str) -> set[str]:
