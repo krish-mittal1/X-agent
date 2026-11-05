@@ -1,0 +1,114 @@
+# Production compose. Local dev keeps compose.yaml (no browser, scheduler off,
+# free-form). Do not run compose.prod.yaml anywhere except the target VPS.
+# Source of truth for secrets is the server's .env (chmod 600, not committed).
+
+# Pinned production intent, shared by every service that reads settings.
+#
+# These are deliberately NOT ${VAR:-default}: Compose interpolates from the same
+# .env, so a copied dev file (DRY_RUN=true, PUBLISHING_ENABLED=false,
+# X_PUBLISHING_MODE=local_draft) would silently turn the deployment into a
+# no-op. Literal values in `environment` win over `env_file`.
+x-prod-flags: &prod-flags
+  APP_ENV: production
+  SCHEDULER_ENABLED: "true"
+  DRAFTING_ENABLED: "true"
+  DISCOVERY_ENABLED: "true"
+  PUBLISHING_ENABLED: "true"
+  DRY_RUN: "false"
+  X_API_ENABLED: "false"
+  # Headless browser publish (only live path that works with this account).
+  X_PUBLISHING_MODE: brave_cdp
+  # Container networking overrides any localhost URL in .env.
+  DATABASE_URL: postgresql+asyncpg://techx:${POSTGRES_PASSWORD:-techx}@db:5432/techx
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-techx}
+      POSTGRES_USER: ${POSTGRES_USER:-techx}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-techx}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U techx -d techx"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build:
+      context: .
+    image: techx-agent:prod
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: *prod-flags
+      API_HOST: 0.0.0.0
+      API_PORT: "8000"
+      EMBEDDING_DEVICE: cpu
+      EMBEDDING_CACHE: "true"
+      # --- per-instance / tunables (may come from .env) ------------------
+      X_PERSONA_HANDLE: ${X_PERSONA_HANDLE:-ssh_bugs}
+      X_AUTH_TOKEN: ${X_AUTH_TOKEN:-}
+      X_CT0: ${X_CT0:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
+      LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
+      LLM_DAILY_BUDGET_USD: ${LLM_DAILY_BUDGET_USD:-0.0}
+      LLM_MAX_REQUESTS_PER_DAY: ${LLM_MAX_REQUESTS_PER_DAY:-500}
+      INGEST_INTERVAL_MINUTES: ${INGEST_INTERVAL_MINUTES:-60}
+      DRAFT_INTERVAL_MINUTES: ${DRAFT_INTERVAL_MINUTES:-180}
+      PUBLISH_INTERVAL_MINUTES: ${PUBLISH_INTERVAL_MINUTES:-30}
+      MAX_POSTS_PER_RUN: ${MAX_POSTS_PER_RUN:-1}
+      MAX_CANDIDATES_PER_RUN: ${MAX_CANDIDATES_PER_RUN:-5}
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persistent temp dir for image attachment downloads (avoids a 12s
+      # download on every post).
+      - media_tmp:/app/.temp_media
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 25s
+      retries: 3
+
+  # Failure alarm. A green container proves nothing: an expired cookie session
+  # or a stalled scheduler both look healthy from outside. This checks post
+  # freshness, publish failures, scheduler liveness and auth-shaped errors every
+  # 15 minutes, then POSTs to ALERT_WEBHOOK_URL when something is wrong.
+  #
+  # It shares *prod-flags with app on purpose: the freshness and publish-loop
+  # checks only apply when the monitor also believes publishing is live.
+  monitor:
+    build:
+      context: .
+    image: techx-agent:prod
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: *prod-flags
+      MONITOR_BASE_URL: http://app:8000
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+      MAX_POST_AGE_HOURS: ${MAX_POST_AGE_HOURS:-6}
+      MAX_PUBLISH_FAILURES: ${MAX_PUBLISH_FAILURES:-3}
+    command:
+      ["sh", "-c", "while true; do python -m scripts.monitor --quiet; sleep 900; done"]
+    depends_on:
+      app:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  media_tmp:
