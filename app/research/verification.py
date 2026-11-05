@@ -13,6 +13,7 @@ The LLM never decides its own verification status: all checks are deterministic.
 
 from __future__ import annotations
 
+import html
 import re
 from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime
@@ -53,8 +54,6 @@ _PRIMARY_DOMAINS = (
     "egazette.gov.in", "sci.gov.in", "incometaxindia.gov.in", "finmin.nic.in"
 )
 
-
-import html
 
 def normalize_for_match(text: str) -> str:
     unescaped = html.unescape(text or "")
