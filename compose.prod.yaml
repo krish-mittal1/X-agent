@@ -1,6 +1,12 @@
 # Production compose. Local dev keeps compose.yaml (no browser, scheduler off,
 # free-form). Do not run compose.prod.yaml anywhere except the target VPS.
 # Source of truth for secrets is the server's .env (chmod 600, not committed).
+#
+# This stack is expected to share a host with unrelated projects, so it is
+# namespaced and capped: explicit project name (containers, network and volumes
+# all get this prefix), loopback-only port binding, and per-service CPU/memory
+# ceilings so a Chromium or embedding spike cannot starve the neighbours.
+name: techx-agent
 
 # Pinned production intent, shared by every service that reads settings.
 #
@@ -36,6 +42,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
+    deploy:
+      resources:
+        limits:
+          cpus: "${DB_CPUS:-1.0}"
+          memory: ${DB_MEMORY_LIMIT:-1g}
 
   app:
     build:
@@ -65,7 +76,11 @@ services:
       MAX_POSTS_PER_RUN: ${MAX_POSTS_PER_RUN:-1}
       MAX_CANDIDATES_PER_RUN: ${MAX_CANDIDATES_PER_RUN:-5}
     ports:
-      - "8000:8000"
+      # Loopback only, non-default host port: nothing is exposed to the
+      # internet, and a neighbour already holding 8000 does not break startup.
+      # Reach the API/dashboard over an SSH tunnel instead:
+      #   ssh -L ${APP_HOST_PORT:-8100}:127.0.0.1:${APP_HOST_PORT:-8100} user@host
+      - "127.0.0.1:${APP_HOST_PORT:-8100}:8000"
     volumes:
       # Persistent temp dir for image attachment downloads (avoids a 12s
       # download on every post).
@@ -75,6 +90,13 @@ services:
         condition: service_healthy
     restart: unless-stopped
     stop_grace_period: 30s
+    deploy:
+      resources:
+        # Headless Chromium plus the embedding model live here; without a cap
+        # this is the service that would take the whole box down.
+        limits:
+          cpus: "${APP_CPUS:-2.0}"
+          memory: ${APP_MEMORY_LIMIT:-3g}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status == 200 else 1)"]
       interval: 30s
@@ -108,6 +130,11 @@ services:
       app:
         condition: service_started
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "${MONITOR_CPUS:-0.5}"
+          memory: ${MONITOR_MEMORY_LIMIT:-256m}
 
 volumes:
   pgdata:

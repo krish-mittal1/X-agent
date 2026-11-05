@@ -96,6 +96,40 @@ docker compose -f compose.prod.yaml logs -f app
 The container runs `alembic upgrade head` before uvicorn, so migrations apply on
 every start. Watch for the scheduler start message.
 
+### Sharing the host with other projects
+
+The stack is namespaced and capped so it does not fight its neighbours:
+
+- **Project name is `techx-agent`**, so containers are `techx-agent-app-1`,
+  `techx-agent-db-1`, `techx-agent-monitor-1`, the network is
+  `techx-agent_default` and volumes are `techx-agent_pgdata` /
+  `techx-agent_media_tmp`. Another compose project on the same daemon can also
+  have a `db` and an `app` — different namespaces, no clash.
+- **No database port is published**, and the API is bound to
+  `127.0.0.1:${APP_HOST_PORT:-8100}` — loopback only, off the default 8000 that
+  other projects usually take. If 8100 is also busy, put `APP_HOST_PORT=8200`
+  (or any free port) in `.env`. Check with:
+  `ss -ltnp | grep -E ':(8000|8100)\b'`.
+- **Reach the dashboard through a tunnel**, never by opening the port:
+  `ssh -L 8100:127.0.0.1:8100 user@host`, then browse `http://localhost:8100`.
+- **Resource ceilings** (enforced by Compose, verified with `docker inspect`):
+  `app` 3 GB / 2 CPU, `db` 1 GB / 1 CPU, `monitor` 256 MB / 0.5 CPU. Override
+  with `APP_MEMORY_LIMIT`, `APP_CPUS`, `DB_MEMORY_LIMIT`, `DB_CPUS`,
+  `MONITOR_MEMORY_LIMIT`, `MONITOR_CPUS` in `.env` — raise `APP_MEMORY_LIMIT`
+  rather than removing it if headless Chromium gets OOM-killed mid-publish.
+- **Disk:** budget ~5 GB free on `/var/lib/docker` (image plus the model).
+
+Two shared-host hazards worth knowing:
+
+1. `docker volume prune` (or `system prune --volumes`) run **while this stack is
+   stopped** can delete `techx-agent_pgdata`. Never prune volumes on a shared
+   box without listing them first.
+2. `docker system prune -a` in another project deletes our `techx-agent:prod`
+   image. Running containers survive, but the next rebuild is a full rebuild.
+
+Also: build during a quiet window. The `pip`/torch layer spikes past 1 GB of RAM
+and competes with whatever else is running.
+
 ## 4. Bootstrap an empty database
 
 A fresh database has no account row; the scheduler then logs that it has no
@@ -109,8 +143,8 @@ Idempotent. Not needed on the existing production data.
 
 ## 5. Prove it before trusting it
 
-1. Health: `curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8000/health` → `200`.
-2. Readiness: `curl -s http://localhost:8000/ready` → `200` and every check `ok`;
+1. Health: `curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8100/health` → `200`.
+2. Readiness: `curl -s http://localhost:8100/ready` → `200` and every check `ok`;
    a `503` names the failing dependency (database, pgvector, migrations).
 3. Run one cycle by hand:
    ```bash
