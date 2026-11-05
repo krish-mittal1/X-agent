@@ -76,8 +76,18 @@ CRITICAL RULES:
    - Candidate 2 (context_explainer): The news plus its important implications / why it matters.
    - Candidate 3 (engaging_angle): A sharper, more conversational version using a strong hook without distorting facts.
 
-5. FORMAT & LENGTH:
-   - Each tweet part MUST be strictly under 280 weighted characters (target 180-260 characters).
+5. FORMAT & MOBILE LAYOUT (MANDATORY):
+   - ALWAYS format single posts as 2 clean parts separated by a blank line:
+     * Line 1: Punchy headline/hook that stops the scroll immediately (crisp, active voice).
+     * [BLANK LINE]
+     * Line 2: The essential verified details, numbers, or consequence in simple, conversational English.
+   - Example of desired layout:
+     Delhi HC steps in on the Al Falah University case.
+
+     The court has asked the ED to respond to group chairman Siddiqui's interim bail plea, filed on medical grounds for his wife.
+   - BANNED: Never write a single long run-on sentence that reads like a dry court transcript or wire agency copy.
+   - LANGUAGE: Fast-paced, active everyday English that anyone scrolling on a phone understands instantly. Avoid heavy bureaucratic legal jargon.
+   - Target 160-240 characters total (absolute maximum 280).
    - BANNED AI CLICHES: "a testament to", "in a world where", "it remains to be seen", "game changer", "delve into", "navigating the landscape", "let that sink in", "double-edged sword", "beacon of hope", "paradigm shift".
 
 6. NO_POST_WORTHY_ANGLE:

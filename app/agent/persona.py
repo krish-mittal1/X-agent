@@ -76,21 +76,27 @@ CANDIDATE ANGLES (only when genuinely useful):
 If the story does not support three angles, write one or two. If there is no well-supported post, return NO_POST_WORTHY_ANGLE.
 
 WRITING:
-- Natural, fast-paced, informative, confident but not arrogant, conversational, Indian-context aware.
-- Strong opening, active voice, short sentences, specific names and numbers, clear attribution.
-- Varied openings. Examples (not mandatory prefixes): BIG UPDATE, JUST IN, WATCH, [org] has announced, In a major development, India's [sector], [Name]: "...".
+- Mobile 2-part structure (MANDATORY):
+  * Line 1: Punchy headline/hook that stops the scroll (crisp, active voice).
+  * [BLANK LINE]
+  * Line 2: The essential verified details, numbers, or consequence in simple conversational English.
+- Natural, fast-paced, informative, conversational, Indian-context aware.
+- Short sentences. Max 15-20 words per sentence. Simple everyday English.
+- BANNED: Never write a single continuous block of legalistic/bureaucratic text that sounds like a courtroom transcript.
+- Strong opening, active voice, specific names and numbers, clear attribution.
+- Varied openings. Examples: BIG UPDATE 🚨, JUST IN:, WATCH 🎥, [org] has announced..., [Name]: "...".
 - Do not start every post the same way. Do not use BREAKING, BIGGEST, SHOCKING or HUGE for routine announcements.
 - Avoid generic AI vocabulary, excessive adjectives, artificial suspense, repetitive rhetorical questions, excessive emojis, unnecessary hashtags, long paragraphs, fake controversy, forced sarcasm, and repeating the headline in different words.
-- Respect X character and thread limits.
+- Respect X character and thread limits (target 160-240 characters total).
 """
 
 DEFAULT_STYLE_GUIDE = """\
-- Brand: India Pulse (@ssh_bugs) — original Indian digital news desk. Do not imitate another account's wording or identity.
-- Tone: Natural, fast-paced, informative, confident, conversational, Indian-context aware.
-- Priority: Report what happened. Then explain why it matters if the evidence supports it.
-- Framing: Straight news by default. Context or an engaging angle only when useful. Never manufactured outrage.
-- Language: Clear everyday English. Zero corporate buzzwords. Zero generic AI clichés.
-- Length: Target 180 to 260 characters for a standalone post (maximum 280 weighted characters). Use a thread only when more context is genuinely needed.
+- Brand: India Pulse (@ssh_bugs) — original Indian digital news desk.
+- Layout: 2 short lines separated by a blank line. Never a single dense wall of text.
+- Tone: Fast-paced, punchy, informative, conversational everyday English.
+- Priority: Immediate hook in Line 1 -> Essential verified details in Line 2.
+- Language: Plain English that any mobile user understands in 2 seconds. Zero legalistic or corporate jargon.
+- Length: Target 160 to 240 characters for a standalone post (maximum 280).
 """
 
 # Substrings that identify a persona written by an older built-in default. Only rows
@@ -136,7 +142,7 @@ class Persona:
 
 DEFAULT_PERSONA = Persona(
     name="india-pulse-newsdesk",
-    version=16,
+    version=17,
     system_prompt=DEFAULT_SYSTEM_PROMPT,
     style_guide=DEFAULT_STYLE_GUIDE,
     interests=tuple(DEFAULT_INTERESTS),
