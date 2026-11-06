@@ -305,7 +305,10 @@ class BraveCDPPublisher(PublishingProvider):
                         # If we have a verified editorial image to attach, upload via Playwright file input
                         if temp_image and temp_image.exists():
                             try:
-                                file_input = page.locator('input[data-testid="fileInput"]')
+                                file_input = page.locator('input[data-testid="fileInput"], input[type="file"][accept*="image"]')
+                                if await file_input.count() == 0:
+                                    with contextlib.suppress(Exception):
+                                        await file_input.first.wait_for(state="attached", timeout=4000)
                                 if await file_input.count() > 0:
                                     logger.info(
                                         "Attaching editorial image via Brave file input",
@@ -313,7 +316,7 @@ class BraveCDPPublisher(PublishingProvider):
                                     )
                                     await file_input.first.set_input_files(str(temp_image.resolve()))
                                     try:
-                                        await page.locator('[data-testid="attachments"]').wait_for(
+                                        await page.locator('[data-testid="attachments"], [data-testid="mediaAttachment"]').wait_for(
                                             state="visible", timeout=12000
                                         )
                                         logger.info("Image attachment preview confirmed visible on X compose dialog")

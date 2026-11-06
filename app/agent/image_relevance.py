@@ -26,6 +26,35 @@ _UNRELATED_HINTS = (
     "og-default",
 )
 
+_KNOWN_SOURCE_CDNS: dict[str, tuple[str, ...]] = {
+    "thehindu.com": ("thgim.com", "thehindu.com"),
+    "ndtv.com": ("ndtvimg.com", "ndtv.com"),
+    "indiatimes.com": ("toiimg.com", "etimg.com", "indiatimes.com"),
+    "indiatoday.in": ("tosshub.com", "indiatoday.in"),
+    "hindustantimes.com": ("ht-assets.com", "hindustantimes.com"),
+    "indianexpress.com": ("indianexpress.com",),
+    "livemint.com": ("livemint.com",),
+    "news18.com": ("news18.com", "cnbctv18.com"),
+}
+
+
+def is_same_source_or_cdn(image_host: str, source_host: str) -> bool:
+    """Check if the image is hosted on the same origin or an authorized publisher CDN."""
+    if not image_host or not source_host:
+        return False
+    if (
+        image_host == source_host
+        or image_host.endswith("." + source_host)
+        or source_host.endswith("." + image_host)
+    ):
+        return True
+    for main_domain, cdns in _KNOWN_SOURCE_CDNS.items():
+        if (source_host == main_domain or source_host.endswith("." + main_domain)) and any(
+            image_host == cdn or image_host.endswith("." + cdn) for cdn in cdns
+        ):
+            return True
+    return False
+
 
 @dataclass(frozen=True)
 class ImageAttachmentDecision:
@@ -95,11 +124,7 @@ def assess_image_attachment(
 
     image_host = _host(url)
     source_host = _host(source_url)
-    same_source = bool(image_host and source_host and (
-        image_host == source_host
-        or image_host.endswith("." + source_host)
-        or source_host.endswith("." + image_host)
-    ))
+    same_source = is_same_source_or_cdn(image_host, source_host)
     if source_url and image_host and source_host and not same_source:
         # Cross-domain photos are often unrelated politician or file photos.
         return ImageAttachmentDecision(
@@ -111,7 +136,7 @@ def assess_image_attachment(
             reason="unrelated_or_unprovenanced_image",
         )
 
-    # Provenance is established only when the image comes from the article itself.
+    # Provenance is established only when the image comes from the article itself or publisher CDN.
     verified = bool(same_source and source_url)
     if claimed_verified and not verified:
         verified = False
@@ -134,19 +159,26 @@ def select_document_image(
     documents: Sequence[object],
     topic: str,
 ) -> ImageAttachmentDecision:
-    """Use the primary source's own image only; skip later documents' photos."""
+    """Select the first verified editorial article image from the story's source documents."""
     if not documents:
         return assess_image_attachment(image_url=None, topic=topic)
 
-    primary = documents[0]
-    metadata = getattr(primary, "metadata_", None) or {}
-    if not isinstance(metadata, dict):
-        metadata = {}
-    return assess_image_attachment(
-        image_url=metadata.get("image_url") if isinstance(metadata.get("image_url"), str) else None,
-        source_url=getattr(primary, "url", None),
-        topic=topic,
-        source_title=getattr(primary, "title", "") or "",
-        claimed_verified=bool(metadata.get("image_verified")),
-        claimed_credit=metadata.get("image_credit") if isinstance(metadata.get("image_credit"), str) else None,
-    )
+    for doc in documents:
+        metadata = getattr(doc, "metadata_", None) or {}
+        if not isinstance(metadata, dict):
+            metadata = {}
+        img_url = metadata.get("image_url") if isinstance(metadata.get("image_url"), str) else None
+        if not img_url:
+            continue
+        decision = assess_image_attachment(
+            image_url=img_url,
+            source_url=getattr(doc, "url", None),
+            topic=topic,
+            source_title=getattr(doc, "title", "") or "",
+            claimed_verified=bool(metadata.get("image_verified")),
+            claimed_credit=metadata.get("image_credit") if isinstance(metadata.get("image_credit"), str) else None,
+        )
+        if decision.attach and decision.image_url:
+            return decision
+
+    return assess_image_attachment(image_url=None, topic=topic)

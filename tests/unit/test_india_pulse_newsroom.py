@@ -73,3 +73,22 @@ def test_image_requires_source_provenance() -> None:
     )
     assert decision.attach is False
     assert decision.verified is False
+
+
+def test_image_allows_verified_publisher_cdns() -> None:
+    the_hindu_decision = assess_image_attachment(
+        image_url="https://th-i.thgim.com/public/incoming/photo.jpg",
+        source_url="https://www.thehindu.com/news/national/article.ece",
+        topic="Court ruling",
+    )
+    assert the_hindu_decision.attach is True
+    assert the_hindu_decision.verified is True
+    assert the_hindu_decision.image_url == "https://th-i.thgim.com/public/incoming/photo.jpg"
+
+    toi_decision = assess_image_attachment(
+        image_url="https://static.toiimg.com/thumb/msid-12345/photo.jpg",
+        source_url="https://timesofindia.indiatimes.com/india/article.cms",
+        topic="Space mission",
+    )
+    assert toi_decision.attach is True
+    assert toi_decision.verified is True
