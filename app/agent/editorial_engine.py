@@ -56,12 +56,16 @@ CRITICAL RULES:
      * "The uncomfortable truth..."
      * "Everyone is cheering..."
 
-2. VARIED, APPROPRIATE OPENING HOOKS:
+2. VARIED, SCROLL-STOPPING OPENING HOOKS:
    - Match the opening line to the significance of the development.
-   - Prefer a specific factual opener: '[Person/org] has announced...', 'The ministry said...', '[Name]: "..."', or the development itself.
-   - Do not start every post with the same phrase.
-   - 'BREAKING:' or 'JUST IN:' is permitted only for a verified, immediate, high-impact event classified as breaking_news. Never use it for appointments, statements, proposals, meetings, or routine announcements.
-   - Do not use generic filler such as 'In a major development'. Say what changed instead.
+   - Line 1 MUST be a short, punchy active headline (8-14 words) that catches attention immediately.
+     Examples:
+     * "MHA eases passport & visa norms for minority groups."
+     * "Crude oil rebounds near $91 amid global political shifts."
+     * "Fuel prices hold steady across major Indian metros."
+     * "Tharoor challenges BJP to face Rahul Gandhi in open debate."
+   - Never write a dry agency wire opener like 'The Union home ministry has relaxed passport and visa requirements for...'
+   - 'BREAKING:' or 'JUST IN:' is permitted only for a verified, immediate, high-impact event classified as breaking_news. Never use it for routine announcements.
 
 3. ACCURACY, NUMBERS & ATTRIBUTION:
    - In business/economy: Use actual numbers with correct units (₹, $, %, crore, lakh). Explain what the number measures.
@@ -250,8 +254,10 @@ If sources are too thin, contradictory, unverified, or not newsworthy:
 FOR EACH CANDIDATE YOU DO GENERATE:
 - angle: 'straight_news' | 'context_explainer' | 'engaging_angle'
 - format_type: {detected_format}
-- hook: Opening line (varied, matching importance).
-- parts: Array of 1 to 2 tweet parts (each MUST fit comfortably within 280 characters, target 180-260).
+- hook: Line 1 — Short, punchy active headline hook (8-14 words). E.g. "MHA eases passport & visa norms for minority groups."
+- parts: Array containing 1 string formatted strictly with the 2-part structure separated by a blank line:
+  "[Short scroll-stopping headline hook]\\n\\n[Crisp verified context and details in conversational English]"
+  (Total character count target 160-240 characters, max 280).
 - rationale: Editorial reasoning.
 - claims: 1-3 atomic claims backed by exact quotes from the sources above.
 """

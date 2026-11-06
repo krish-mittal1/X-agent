@@ -48,16 +48,25 @@ from app.schemas.content import (
 logger = get_logger(__name__)
 
 
-def ensure_two_part_layout(text: str) -> str:
+def ensure_two_part_layout(text: str, hook: str = "") -> str:
     """Ensure a single-post update has a clean 2-part mobile layout separated by a blank line."""
-    if "\n" in text:
+    if "\n\n" in text or "\n" in text:
         return text
     # Match the first sentence ending with punctuation (.!?), followed by whitespace and a subsequent sentence
     m = re.match(r"^([^.!?]+[.!?])\s+(.+)$", text)
     if m:
         first_sentence, rest = m.group(1).strip(), m.group(2).strip()
-        if len(first_sentence) >= 20 and len(rest) >= 20 and len(f"{first_sentence}\n\n{rest}") <= 280:
+        if len(first_sentence) >= 15 and len(rest) >= 15 and len(f"{first_sentence}\n\n{rest}") <= 280:
             return f"{first_sentence}\n\n{rest}"
+
+    # If text is a single sentence, prepend the champion hook as the scroll-stopping headline
+    if hook:
+        clean_hook = hook.strip().rstrip(".!?")
+        if clean_hook.lower() not in text.lower()[: len(clean_hook) + 10]:
+            candidate = f"{clean_hook}.\n\n{text.strip()}"
+            if len(candidate) <= 280:
+                return candidate
+
     return text
 
 
@@ -325,7 +334,7 @@ class ContentWriter:
                 thread_parts_list = parts[1:]
 
             if not thread_parts_list and "\n" not in body_text:
-                body_text = ensure_two_part_layout(body_text)
+                body_text = ensure_two_part_layout(body_text, hook=champion.hook)
 
             draft = await DraftRepository.create(
                 session,

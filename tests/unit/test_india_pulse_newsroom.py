@@ -92,3 +92,20 @@ def test_image_allows_verified_publisher_cdns() -> None:
     )
     assert toi_decision.attach is True
     assert toi_decision.verified is True
+
+
+def test_ensure_two_part_layout_splits_multiple_sentences() -> None:
+    from app.agent.writer import ensure_two_part_layout
+
+    text = "First sentence here. Second sentence follows."
+    formatted = ensure_two_part_layout(text)
+    assert formatted == "First sentence here.\n\nSecond sentence follows."
+
+
+def test_ensure_two_part_layout_uses_hook_when_single_sentence() -> None:
+    from app.agent.writer import ensure_two_part_layout
+
+    text = "The Union Home ministry has relaxed passport and visa requirements for certain foreign nationals."
+    hook = "MHA eases passport norms"
+    formatted = ensure_two_part_layout(text, hook=hook)
+    assert formatted == f"MHA eases passport norms.\n\n{text}"
