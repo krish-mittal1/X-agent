@@ -56,7 +56,11 @@ def ensure_two_part_layout(text: str, hook: str = "") -> str:
     m = re.match(r"^([^.!?]+[.!?])\s+(.+)$", text)
     if m:
         first_sentence, rest = m.group(1).strip(), m.group(2).strip()
-        if len(first_sentence) >= 15 and len(rest) >= 15 and len(f"{first_sentence}\n\n{rest}") <= 280:
+        if (
+            len(first_sentence) >= 15
+            and len(rest) >= 15
+            and len(f"{first_sentence}\n\n{rest}") <= 280
+        ):
             return f"{first_sentence}\n\n{rest}"
 
     # If text is a single sentence, prepend the champion hook as the scroll-stopping headline
@@ -130,9 +134,52 @@ class ContentWriter:
             if isinstance(report, dict) and isinstance(report.get("validation_format"), str)
         ]
 
-    async def create_original_draft(
-        self, account_id: int, source_ids: list[int]
-    ) -> DraftOutcome:
+    async def _fetch_missing_article_image(self, documents: list[SourceDocument]) -> None:
+        """Fetch article webpage just-in-time to extract og:image if missing from RSS enclosures."""
+        for doc in documents:
+            if (doc.metadata_ or {}).get("image_url"):
+                return
+        primary = documents[0] if documents else None
+        if not primary or not primary.url or not primary.url.startswith("http"):
+            return
+        try:
+            import httpx
+
+            from app.ingestion.extract import extract_article_image
+            from app.net import safe_get
+
+            async with httpx.AsyncClient(
+                headers={
+                    "User-Agent": (
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/124.0.0.0 Safari/537.36"
+                    )
+                },
+                follow_redirects=True,
+            ) as client:
+                page = await safe_get(
+                    primary.url,
+                    client=client,
+                    timeout_seconds=min(self.settings.http_timeout_seconds, 6.0),
+                    max_bytes=min(self.settings.source_max_bytes, 1_000_000),
+                )
+                img_url = extract_article_image(page.text)
+                if img_url:
+                    if primary.metadata_ is None:
+                        primary.metadata_ = {}
+                    primary.metadata_["image_url"] = img_url
+                    logger.info(
+                        "just-in-time image fetched for article",
+                        extra={"url": primary.url, "image_url": img_url},
+                    )
+        except Exception as exc:
+            logger.debug(
+                "just-in-time image fetch failed",
+                extra={"url": getattr(primary, "url", ""), "error": str(exc)},
+            )
+
+    async def create_original_draft(self, account_id: int, source_ids: list[int]) -> DraftOutcome:
         if not self.settings.drafting_enabled:
             raise ContentGenerationError("drafting is disabled by configuration")
         key = f"original:{account_id}:{'-'.join(str(i) for i in sorted(source_ids))}"
@@ -163,7 +210,11 @@ class ContentWriter:
             if research_sources is None and report:
                 research_sources = list(report.__dict__.get("sources", []))
             research_sources = research_sources or []
-            research_conflicts = list(report.conflicting_info or []) if report and hasattr(report, "conflicting_info") else []
+            research_conflicts = (
+                list(report.conflicting_info or [])
+                if report and hasattr(report, "conflicting_info")
+                else []
+            )
 
         # -------------------------------------------------------------------
         # 2. Event Intelligence & Timeline Memory Retrieval (Stage 2 & 3)
@@ -189,7 +240,9 @@ class ContentWriter:
                 research_report_id=report.id,
             )
         except LLMError as exc:
-            logger.warning("draft generation failed", extra={"extra_fields": {"error": str(exc)[:300]}})
+            logger.warning(
+                "draft generation failed", extra={"extra_fields": {"error": str(exc)[:300]}}
+            )
             raise ContentGenerationError(f"draft generation failed: {exc}") from exc
 
         champion = selection_result.champion
@@ -235,9 +288,7 @@ class ContentWriter:
         embedding_similarity: float | None = None
         async with self.session_factory() as session:
             retriever = HybridRetriever(self.settings, self.embedder)
-            novelty = await retriever.novelty_score(
-                session, account_id=account_id, text=joined
-            )
+            novelty = await retriever.novelty_score(session, account_id=account_id, text=joined)
             embedding_similarity = None if novelty is None else max(0.0, 1.0 - novelty)
             recent_posts = await PostRepository.recent(
                 session, account_id, limit=self.settings.recent_posts_for_dedup
@@ -261,7 +312,9 @@ class ContentWriter:
         if verification.hard_stop_triggered:
             blocking.append("hard stop: factual contradiction or unverified numeric claims")
         if verification.contradicted_claims > 0:
-            blocking.append(f"draft contains {verification.contradicted_claims} contradicted claims")
+            blocking.append(
+                f"draft contains {verification.contradicted_claims} contradicted claims"
+            )
 
         if requires_numeric_evidence(validation_format) and has_unlisted_quantitative_assertion(
             joined, champion.claims
@@ -277,11 +330,16 @@ class ContentWriter:
 
         if blocking:
             status = DRAFT_BLOCKED
-        elif selection_result.status == "needs_revision" or report.status == "failed" and (not verification.passed or verification.unverified_facts > 0):
+        elif (
+            selection_result.status == "needs_revision"
+            or report.status == "failed"
+            and (not verification.passed or verification.unverified_facts > 0)
+        ):
             status = DRAFT_NEEDS_REVIEW
         else:
             status = DRAFT_READY
 
+        await self._fetch_missing_article_image(documents)
         image_decision = select_document_image(documents, selection_result.topic)
         image_url = image_decision.image_url if image_decision.attach else None
         if champion.critic_score and image_url:
@@ -304,7 +362,9 @@ class ContentWriter:
             policy_report_dict: dict[str, Any] = {
                 "duplicate": duplicate.model_dump(mode="json"),
                 "text_rules": text_rules.model_dump(mode="json"),
-                "critic": champion.critic_score.model_dump(mode="json") if champion.critic_score else None,
+                "critic": champion.critic_score.model_dump(mode="json")
+                if champion.critic_score
+                else None,
                 "trending": any(doc.metadata_.get("trending") for doc in documents),
                 "format": champion.news_format,
                 "validation_format": validation_format,
@@ -326,14 +386,21 @@ class ContentWriter:
                 if image_decision.credit:
                     policy_report_dict["image_credit"] = image_decision.credit
 
-            if validation_format != "thread" and len(parts) == 2 and len(f"{parts[0]}\n\n{parts[1]}") <= 280:
-                body_text = f"{parts[0]}\n\n{parts[1]}"
-                thread_parts_list: list[str] = []
+            # Guaranteed Single-Post Newsdesk Container:
+            # All standard updates are strictly published as 1 single tweet with 2-part mobile layout.
+            if len(parts) >= 2:
+                candidate_joined = "\n\n".join(parts)
+                if len(candidate_joined) <= 280:
+                    body_text = candidate_joined
+                    thread_parts_list: list[str] = []
+                else:
+                    body_text = parts[0]
+                    thread_parts_list = []
             else:
                 body_text = parts[0] if parts else ""
-                thread_parts_list = parts[1:]
+                thread_parts_list = []
 
-            if not thread_parts_list and "\n" not in body_text:
+            if "\n" not in body_text:
                 body_text = ensure_two_part_layout(body_text, hook=champion.hook)
 
             draft = await DraftRepository.create(
@@ -382,6 +449,15 @@ class ContentWriter:
                 draft_id=draft.id,
                 context_angle=champion.angle,
             )
+
+            if documents and documents[0].id:
+                primary_doc_db = await session.get(SourceDocument, documents[0].id)
+                if primary_doc_db and documents[0].metadata_:
+                    img = documents[0].metadata_.get("image_url")
+                    if img and (primary_doc_db.metadata_ or {}).get("image_url") != img:
+                        updated_meta = dict(primary_doc_db.metadata_ or {})
+                        updated_meta["image_url"] = img
+                        primary_doc_db.metadata_ = updated_meta
 
             # Record editorial memory for future angle contrast
             await self.event_service.record_editorial_memory(
@@ -453,7 +529,9 @@ class ContentWriter:
 
     @staticmethod
     def _outcome_from_draft(draft: Draft) -> DraftOutcome:
-        verification = VerificationReport.model_validate(draft.verification_report or {"passed": False})
+        verification = VerificationReport.model_validate(
+            draft.verification_report or {"passed": False}
+        )
         return DraftOutcome(
             draft_id=draft.id,
             status=draft.status,

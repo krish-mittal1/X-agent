@@ -28,8 +28,26 @@ _WHITESPACE = re.compile(r"\s+")
 _NUMBER = re.compile(r"\b\d+(?:[.,]\d+)?%?\b")
 _WORD = re.compile(r"[a-z][a-z0-9-]+")
 _STOP = {
-    "the", "and", "with", "from", "that", "this", "for", "its", "was", "were",
-    "has", "have", "are", "will", "can", "more", "than", "into", "using", "used",
+    "the",
+    "and",
+    "with",
+    "from",
+    "that",
+    "this",
+    "for",
+    "its",
+    "was",
+    "were",
+    "has",
+    "have",
+    "are",
+    "will",
+    "can",
+    "more",
+    "than",
+    "into",
+    "using",
+    "used",
 }
 
 _FINANCIAL_OR_NUMERICAL = re.compile(
@@ -50,8 +68,15 @@ _POLICY_REGULATORY_TERMS = re.compile(
 )
 
 _PRIMARY_DOMAINS = (
-    "pib.gov.in", "rbi.org.in", "sebi.gov.in", "meity.gov.in", "isro.gov.in",
-    "egazette.gov.in", "sci.gov.in", "incometaxindia.gov.in", "finmin.nic.in"
+    "pib.gov.in",
+    "rbi.org.in",
+    "sebi.gov.in",
+    "meity.gov.in",
+    "isro.gov.in",
+    "egazette.gov.in",
+    "sci.gov.in",
+    "incometaxindia.gov.in",
+    "finmin.nic.in",
 )
 
 
@@ -106,7 +131,11 @@ def _numbers(text: str) -> set[str]:
 def categorize_claim(text: str) -> str:
     """Classify an atomic claim into a specific fact-checking category."""
     if _FINANCIAL_OR_NUMERICAL.search(text):
-        return "financial" if any(c in text for c in ("₹", "$", "€", "crore", "lakh", "INR", "USD")) else "numerical"
+        return (
+            "financial"
+            if any(c in text for c in ("₹", "$", "€", "crore", "lakh", "INR", "USD"))
+            else "numerical"
+        )
     if _POLICY_REGULATORY_TERMS.search(text):
         return "political"
     if ('"' in text or "“" in text) and len(text) > 10:
@@ -148,7 +177,9 @@ class SourceView:
         self.reliability_score = float(rel) if rel is not None else 0.7
         self.fetch_status = getattr(obj, "fetch_status", "ok")
         self.metadata_ = getattr(obj, "metadata_", {}) or {}
-        self.syndication_hash = getattr(obj, "syndication_hash", None) or self.metadata_.get("syndication_hash")
+        self.syndication_hash = getattr(obj, "syndication_hash", None) or self.metadata_.get(
+            "syndication_hash"
+        )
         self.source_type = getattr(obj, "source_type", "news")
         self.is_primary = bool(
             getattr(obj, "is_primary", False)
@@ -169,17 +200,30 @@ class ClaimVerifier:
         for document in candidates:
             if quote_supported(claim.supporting_quote, document.content):
                 return document, True
+            # Entity and token overlap matching for conversational headlines
+            c_tokens = _claim_tokens(claim.claim)
+            if len(c_tokens) >= 3:
+                doc_tokens = _claim_tokens(document.content)
+                expanded_doc_tokens = set(doc_tokens)
+                for t in doc_tokens:
+                    if "-" in t:
+                        expanded_doc_tokens.update(part for part in t.split("-") if len(part) > 3)
+                shared = c_tokens & expanded_doc_tokens
+                c_nums = _numbers(claim.claim)
+                doc_nums = _numbers(document.content)
+                if c_nums.issubset(doc_nums) and (len(shared) / len(c_tokens) >= 0.60):
+                    return document, True
         return (by_url[0] if by_url else None), False
 
-    def _count_independent_sources(
-        self, quote: str, sources: Sequence[SourceView]
-    ) -> int:
+    def _count_independent_sources(self, quote: str, sources: Sequence[SourceView]) -> int:
         """Count unique non-syndicated sources that corroborate this quote."""
         seen_syndication: set[str] = set()
         independent_count = 0
         for doc in sources:
             if quote_supported(quote, doc.content):
-                syn_key = doc.syndication_hash or doc.url.split("/")[2] if "//" in doc.url else doc.url
+                syn_key = (
+                    doc.syndication_hash or doc.url.split("/")[2] if "//" in doc.url else doc.url
+                )
                 if syn_key not in seen_syndication:
                     seen_syndication.add(syn_key)
                     independent_count += 1
@@ -242,7 +286,9 @@ class ClaimVerifier:
                         notes="source contains suspected prompt-injection content; refusing to use it as evidence",
                     )
                 )
-                issues.append(f"prompt-injection content in source cannot support claim: {claim.claim[:120]}")
+                issues.append(
+                    f"prompt-injection content in source cannot support claim: {claim.claim[:120]}"
+                )
                 continue
 
             if matched and detect_prompt_injection(claim.supporting_quote):
@@ -405,7 +451,9 @@ class ClaimVerifier:
                         if conf_nums:
                             is_match = bool(conf_nums & cl_nums) and len(shared) >= 2
                         else:
-                            is_match = (len(shared) / len(conf_tokens) >= 0.6) if conf_tokens else False
+                            is_match = (
+                                (len(shared) / len(conf_tokens) >= 0.6) if conf_tokens else False
+                            )
 
                         if is_match:
                             if check.status == "verified":
@@ -422,14 +470,16 @@ class ClaimVerifier:
                             )
 
         if not claims:
-            warnings.append("draft declares no claims; verify any implied factual statements manually")
+            warnings.append(
+                "draft declares no claims; verify any implied factual statements manually"
+            )
         if verified_facts == 0 and not unverified_facts and claims:
             warnings.append("no factual claims were declared, only interpretation/opinion")
 
         hard_stop_triggered = len(hard_stop_reasons) > 0
 
         if self.settings.require_verified_claims:
-            passed = (unverified_facts == 0 and not issues and not hard_stop_triggered)
+            passed = unverified_facts == 0 and not issues and not hard_stop_triggered
         else:
             passed = not hard_stop_triggered
             warnings.append("REQUIRE_VERIFIED_CLAIMS=false: unverified facts permitted by config")

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.agent.critic import EditorialCriticService, EditorialEvaluationResult
 from app.agent.formats import (
@@ -114,10 +114,46 @@ class SingleAngleCandidate(BaseModel):
         "witty",
     ]
     format_type: str = Field(default="straight_news", description="Classified news format")
-    hook: str = Field(description="Varied opening hook matching the development")
-    parts: list[str] = Field(min_length=1, max_length=4, description="Tweet parts under 280 chars, target 180-260 chars")
+    hook: str = Field(default="", description="Varied opening hook matching the development")
+    headline_hook: str = Field(
+        default="", description="Line 1: Short, scroll-stopping active headline hook (8-14 words)"
+    )
+    context_line: str = Field(
+        default="",
+        description="Line 2: Crisp verified context and human stakes in conversational plain English (under 25 words)",
+    )
+    parts: list[str] = Field(
+        default_factory=list, description="Tweet parts under 280 chars, target 180-260 chars"
+    )
     rationale: str = Field(description="Why this angle works")
-    claims: list[DraftClaim] = Field(default_factory=list, description="Factual claims with exact quotes")
+    claims: list[DraftClaim] = Field(
+        default_factory=list, description="Factual claims with exact quotes"
+    )
+
+    @model_validator(mode="after")
+    def assemble_newsdesk_post(self) -> SingleAngleCandidate:
+        h = (self.headline_hook or self.hook or "").strip()
+        c = self.context_line.strip()
+        if h and c:
+            combined = f"{h}\n\n{c}"
+            if len(combined) <= 280:
+                self.parts = [combined]
+        elif not self.parts and h:
+            self.parts = [h]
+        elif self.parts:
+            # If parts has 1 unformatted block without \n\n, and we have a distinct hook, combine them!
+            if (
+                len(self.parts) == 1
+                and "\n\n" not in self.parts[0]
+                and h
+                and h.lower() not in self.parts[0].lower()[: len(h) + 10]
+            ):
+                candidate = f"{h.rstrip('.!?')}.\n\n{self.parts[0].strip()}"
+                if len(candidate) <= 280:
+                    self.parts = [candidate]
+        if h and not self.hook:
+            self.hook = h
+        return self
 
 
 class MultiAngleGenerationResponse(BaseModel):
@@ -179,7 +215,9 @@ class EditorialCandidate:
             "generation_model": self.model_name,
             "persona_version": self.persona_version,
             "claims": [c.model_dump(mode="json") for c in self.claims],
-            "critic_score": self.critic_score.model_dump(mode="json") if self.critic_score else None,
+            "critic_score": self.critic_score.model_dump(mode="json")
+            if self.critic_score
+            else None,
             "rewrite_history": self.rewrite_history,
         }
 
@@ -254,10 +292,9 @@ If sources are too thin, contradictory, unverified, or not newsworthy:
 FOR EACH CANDIDATE YOU DO GENERATE:
 - angle: 'straight_news' | 'context_explainer' | 'engaging_angle'
 - format_type: {detected_format}
-- hook: Line 1 — Short, punchy active headline hook (8-14 words). E.g. "MHA eases passport & visa norms for minority groups."
-- parts: Array containing 1 string formatted strictly with the 2-part structure separated by a blank line:
-  "[Short scroll-stopping headline hook]\\n\\n[Crisp verified context and details in conversational English]"
-  (Total character count target 160-240 characters, max 280).
+- headline_hook: Line 1 — Short, punchy active headline hook (8-14 words). E.g. "Delhi's toxic air reaches the Supreme Court."
+- context_line: Line 2 — Crisp verified context and human stakes in conversational plain English (under 25 words). E.g. "CJI Sanjiv Khanna noted how severe the pollution has become, as the court agreed to hear the crisis urgently."
+- parts: Array containing 1 string formatted strictly with the 2-part structure: ["headline_hook\\n\\ncontext_line"] (Total chars 160-240, max 280).
 - rationale: Editorial reasoning.
 - claims: 1-3 atomic claims backed by exact quotes from the sources above.
 """
@@ -422,18 +459,28 @@ FOR EACH CANDIDATE YOU DO GENERATE:
             current_cand = cand
             # Bounded rewriting (max 2 attempts) for drafts needing revision
             attempts = 0
-            while evaluation.verdict == "needs_revision" and attempts < 2 and evaluation.suggestions:
+            while (
+                evaluation.verdict == "needs_revision" and attempts < 2 and evaluation.suggestions
+            ):
                 attempts += 1
                 logger.info(
                     "initiating_bounded_rewrite",
-                    extra={"extra_fields": {"angle": cand.angle, "attempt": attempts, "suggestions": evaluation.suggestions}},
+                    extra={
+                        "extra_fields": {
+                            "angle": cand.angle,
+                            "attempt": attempts,
+                            "suggestions": evaluation.suggestions,
+                        }
+                    },
                 )
-                rewrite_history.append({
-                    "attempt": attempts,
-                    "previous_score": evaluation.overall_score,
-                    "previous_parts": current_cand.parts,
-                    "suggestions": evaluation.suggestions,
-                })
+                rewrite_history.append(
+                    {
+                        "attempt": attempts,
+                        "previous_score": evaluation.overall_score,
+                        "previous_parts": current_cand.parts,
+                        "suggestions": evaluation.suggestions,
+                    }
+                )
                 rewritten = await self.rewrite_candidate(
                     current_cand,
                     evaluation.suggestions,
@@ -474,7 +521,7 @@ FOR EACH CANDIDATE YOU DO GENERATE:
 
         # Sort by overall score descending
         evaluated_candidates.sort(
-            key=lambda c: (c.critic_score.overall_score if c.critic_score else 0),
+            key=lambda c: c.critic_score.overall_score if c.critic_score else 0,
             reverse=True,
         )
 
@@ -496,7 +543,9 @@ FOR EACH CANDIDATE YOU DO GENERATE:
             extra={
                 "extra_fields": {
                     "champion_angle": champion.angle,
-                    "champion_score": champion.critic_score.overall_score if champion.critic_score else 0,
+                    "champion_score": champion.critic_score.overall_score
+                    if champion.critic_score
+                    else 0,
                     "status": status,
                     "alternatives_count": len(alternatives),
                 }

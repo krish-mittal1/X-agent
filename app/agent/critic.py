@@ -81,6 +81,11 @@ _GENERIC_NEWSROOM_PHRASES = {
     r"\bin a major development\b": "in a major development",
 }
 
+_PASSIVE_WIRE_LEAD = re.compile(
+    r"^(?:The\s+[\w\s]{2,30}\s+(?:ministry|court|police|government|department|bench|panel|agency)\s+has\s+(?:taken|relaxed|announced|directed|issued|sought|filed|stated|moved))\b",
+    re.IGNORECASE,
+)
+
 _PROMOTIONAL_NON_NEWS = re.compile(
     r"\b(?:urged|invited|encouraged)\s+(?:investors|companies|businesses)\s+"
     r"to\s+(?:explore|consider|invest)\b",
@@ -180,7 +185,10 @@ class EditorialCriticService:
 
         # 1. ACCURACY AND ATTRIBUTION (25%)
         if verification_report is not None:
-            if verification_report.contradicted_claims > 0 or verification_report.hard_stop_triggered:
+            if (
+                verification_report.contradicted_claims > 0
+                or verification_report.hard_stop_triggered
+            ):
                 factual_score = 0.0
                 flags.append("factual_contradiction")
                 suggestions.append("Resolve contradictory claims or unverified numerical figures.")
@@ -233,7 +241,9 @@ class EditorialCriticService:
                 f"{', '.join(matched_hot_takes)}. Report the verified news directly."
             )
 
-        matched_cliches = [name for pat, name in _BANNED_AI_CLICHES.items() if re.search(pat, lowered)]
+        matched_cliches = [
+            name for pat, name in _BANNED_AI_CLICHES.items() if re.search(pat, lowered)
+        ]
         if matched_cliches:
             originality_score -= len(matched_cliches) * 15.0
             flags.append("generic_ai_phrase")
@@ -272,33 +282,23 @@ class EditorialCriticService:
                 re.IGNORECASE,
             )
         )
-        has_institution = any(
-            w in lowered
-            for w in [
-                "railways",
-                "isro",
-                "drdo",
-                "rbi",
-                "sebi",
-                "court",
-                "ministry",
-                "parliament",
-                "cabinet",
-                "police",
-                "commission",
-            ]
-        )
+        has_quote = bool('"' in draft_text or "“" in draft_text)
         if has_metrics:
             insight_score += 10.0
-        if has_attribution:
+        if has_quote:
+            insight_score += 10.0
+        elif has_attribution:
             insight_score += 5.0
-        if has_institution:
-            insight_score += 5.0
-        if not has_metrics and not has_attribution and len(draft_text.split()) < 12:
+        if (
+            not has_metrics
+            and not has_attribution
+            and not has_quote
+            and len(draft_text.split()) < 12
+        ):
             insight_score -= 20.0
             flags.append("low_information_density")
             suggestions.append("Include specific verified details, numbers, or attribution.")
-        if news_format in {"political_news", "explainer"} and not has_attribution:
+        if news_format in {"political_news", "explainer"} and not has_attribution and not has_quote:
             insight_score -= 10.0
             flags.append("missing_critical_context")
             suggestions.append("Add attribution or the next confirmed step.")
@@ -313,6 +313,14 @@ class EditorialCriticService:
             clean_acad = [c.replace(r"\b", "") for c in academic_hits]
             suggestions.append(
                 f"Replace formal connectives ({', '.join(clean_acad)}) with conversational flow."
+            )
+
+        sentences = [s.strip() for s in re.split(r"[.!?]\s+", draft_text) if s.strip()]
+        if any(len(s.split()) > 24 for s in sentences):
+            naturalness_score -= 15.0
+            flags.append("run_on_sentence")
+            suggestions.append(
+                "Break long run-on sentences into short, active sentences under 18 words."
             )
 
         emojis = _EMOJI_PATTERN.findall(draft_text)
@@ -348,14 +356,21 @@ class EditorialCriticService:
 
         # 6. NEWS CLARITY, OPENING, LENGTH, IMAGE (10%)
         clarity_score = 90.0
+        if _PASSIVE_WIRE_LEAD.search(draft_text.strip()):
+            clarity_score -= 20.0
+            flags.append("passive_agency_lead")
+            suggestions.append(
+                "Rewrite the opening into a punchy active hook instead of a passive agency bulletin lead."
+            )
+        if "\n\n" in draft_text.strip():
+            clarity_score = min(100.0, clarity_score + 10.0)
+
         parts = [part for part in draft_text.split("\n\n") if part.strip()] or [draft_text]
         longest_part = max(map(len, parts))
         if longest_part > 280:
             clarity_score -= 20.0
             flags.append("length_overflow")
-            suggestions.append(
-                f"Post part is {longest_part} chars (exceeds the 280-char X limit)."
-            )
+            suggestions.append(f"Post part is {longest_part} chars (exceeds the 280-char X limit).")
         if any(re.search(pat, first_line) for pat in _HYPE_OPENERS) and news_format not in {
             "breaking_news",
             "video_viral",
@@ -397,7 +412,9 @@ class EditorialCriticService:
             1,
         )
 
-        if (verification_report and verification_report.hard_stop_triggered) or factual_score < 40.0:
+        if (
+            verification_report and verification_report.hard_stop_triggered
+        ) or factual_score < 40.0:
             verdict = "rejected"
             critic_reasoning = (
                 "Draft rejected by critic: unverified factual claims or hard safety stop triggered."
@@ -427,8 +444,7 @@ class EditorialCriticService:
         ):
             verdict = "needs_revision"
             critic_reasoning = (
-                "Draft needs revision: newsroom-quality issue detected "
-                f"({', '.join(suggestions)})."
+                f"Draft needs revision: newsroom-quality issue detected ({', '.join(suggestions)})."
             )
         elif overall_score >= 70.0:
             verdict = "approved"
@@ -443,7 +459,9 @@ class EditorialCriticService:
             )
         else:
             verdict = "rejected"
-            critic_reasoning = "Draft fell below editorial quality threshold. Requires human rework."
+            critic_reasoning = (
+                "Draft fell below editorial quality threshold. Requires human rework."
+            )
 
         return EditorialEvaluationResult(
             overall_score=overall_score,
