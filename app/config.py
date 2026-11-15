@@ -116,7 +116,7 @@ class Settings(BaseSettings):
     max_original_posts_per_day: int = 3
     max_replies_per_day: int = 5
     max_posts_per_run: int = 1
-    min_hours_between_posts: float = 3.0
+    min_hours_between_posts: float = 3.5
     publish_min_score: float = 0.5
 
     # --- research ----------------------------------------------------------
@@ -209,8 +209,8 @@ class Settings(BaseSettings):
     posts_per_day_max: int = 6
     posting_window_start_hour: int = 8
     posting_window_end_hour: int = 23
-    growth_min_post_gap_minutes: float = 55.0
-    growth_slot_tolerance_minutes: float = 25.0
+    growth_min_post_gap_minutes: float = 120.0
+    growth_slot_tolerance_minutes: float = 30.0
     # Account-age ramp: limits stay at the warm-up floor until the account has
     # aged, then climb linearly to the operator's targets.
     growth_warmup_days: int = 14
@@ -248,10 +248,10 @@ class Settings(BaseSettings):
     scheduler_enabled: bool = False
     ingest_interval_minutes: int = 60
     rank_interval_minutes: int = 120
-    draft_interval_minutes: int = 180
-    publish_interval_minutes: int = 30
-    reply_draft_interval_minutes: int = 60
-    outbound_engagement_interval_minutes: int = 120
+    draft_interval_minutes: int = 240
+    publish_interval_minutes: int = 60
+    reply_draft_interval_minutes: int = 120
+    outbound_engagement_interval_minutes: int = 240
     outbound_engagement_enabled: bool = True
     consolidation_interval_hours: int = 24
     analytics_interval_hours: int = 6
