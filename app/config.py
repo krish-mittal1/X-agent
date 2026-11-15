@@ -120,7 +120,16 @@ class Settings(BaseSettings):
     publish_min_score: float = 0.5
 
     # --- research ----------------------------------------------------------
-    rss_feeds: str = ""
+    rss_feeds: str = (
+        "https://inc42.com/feed/,"
+        "https://economictimes.indiatimes.com/tech/technology/rssfeeds/13357270.cms,"
+        "https://www.livemint.com/rss/technology,"
+        "https://www.moneycontrol.com/rss/technology.xml,"
+        "https://timesofindia.indiatimes.com/rssfeeds/66949542.cms,"
+        "https://indianexpress.com/section/technology/feed/,"
+        "https://www.livemint.com/rss/companies,"
+        "https://www.moneycontrol.com/rss/business.xml"
+    )
     github_repositories: str = ""
     github_search_queries: str = ""
     github_token: SecretStr | None = None
