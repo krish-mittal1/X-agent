@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.agent.critic import EditorialCriticService
 from app.agent.editorial_engine import EditorialEngine
 from app.agent.formats import choose_format, requires_numeric_evidence
-from app.agent.image_relevance import select_document_image
+from app.agent.image_relevance import assess_image_attachment, select_document_image
 from app.config import Settings
 from app.logging_config import get_logger
 from app.memory.embeddings import EmbeddingProvider
@@ -135,12 +135,32 @@ class ContentWriter:
         ]
 
     async def _fetch_missing_article_image(self, documents: list[SourceDocument]) -> None:
-        """Fetch article webpage just-in-time to extract og:image if missing from RSS enclosures."""
-        for doc in documents:
-            if (doc.metadata_ or {}).get("image_url"):
-                return
-        primary = documents[0] if documents else None
-        if not primary or not primary.url or not primary.url.startswith("http"):
+        """Fetch article pages just-in-time for og:image, best candidate first.
+
+        A feed can ship no enclosure, and the primary source's og:image can be a
+        logo that fails the provenance gate. Walk the documents in order, skip
+        any that already yield an attachable image, and stop on the first usable
+        photo or when the fetch budget runs out.
+        """
+        if not documents:
+            return
+        if any(
+            assess_image_attachment(
+                image_url=(doc.metadata_ or {}).get("image_url"),
+                source_url=doc.url,
+            ).attach
+            for doc in documents
+        ):
+            return
+        budget = max(1, min(3, int(self.settings.max_article_fetches_per_run or 1)))
+        targets = [
+            doc
+            for doc in documents
+            if doc.url
+            and doc.url.startswith("http")
+            and not (doc.metadata_ or {}).get("image_url")
+        ][:budget]
+        if not targets:
             return
         try:
             import httpx
@@ -158,26 +178,57 @@ class ContentWriter:
                 },
                 follow_redirects=True,
             ) as client:
-                page = await safe_get(
-                    primary.url,
-                    client=client,
-                    timeout_seconds=min(self.settings.http_timeout_seconds, 6.0),
-                    max_bytes=min(self.settings.source_max_bytes, 1_000_000),
-                )
-                img_url = extract_article_image(page.text)
-                if img_url:
-                    if primary.metadata_ is None:
-                        primary.metadata_ = {}
-                    primary.metadata_["image_url"] = img_url
+                for document in targets:
+                    try:
+                        page = await safe_get(
+                            document.url,
+                            client=client,
+                            timeout_seconds=min(self.settings.http_timeout_seconds, 6.0),
+                            max_bytes=min(self.settings.source_max_bytes, 1_000_000),
+                        )
+                        img_url = extract_article_image(page.text)
+                    except Exception as exc:
+                        logger.debug(
+                            "just-in-time image fetch failed",
+                            extra={"url": document.url, "error": str(exc)},
+                        )
+                        continue
+                    if not img_url:
+                        continue
+                    if not assess_image_attachment(
+                        image_url=img_url, source_url=document.url
+                    ).attach:
+                        continue
+                    if document.metadata_ is None:
+                        document.metadata_ = {}
+                    document.metadata_["image_url"] = img_url
                     logger.info(
                         "just-in-time image fetched for article",
-                        extra={"url": primary.url, "image_url": img_url},
+                        extra={"url": document.url, "image_url": img_url},
                     )
+                    return
         except Exception as exc:
             logger.debug(
                 "just-in-time image fetch failed",
-                extra={"url": getattr(primary, "url", ""), "error": str(exc)},
+                extra={"error": str(exc)},
             )
+
+    @staticmethod
+    async def _recent_image_urls(
+        session: AsyncSession, account_id: int, *, limit: int = 15
+    ) -> list[str]:
+        """Image URLs already used by recent originals, so we do not repeat a photo."""
+        rows = await session.scalars(
+            select(Draft.policy_report["image_url"].astext)
+            .where(
+                Draft.account_id == account_id,
+                Draft.kind == "original",
+                Draft.policy_report.is_not(None),
+            )
+            .order_by(Draft.created_at.desc())
+            .limit(limit)
+        )
+        return [row for row in rows if row]
 
     async def create_original_draft(self, account_id: int, source_ids: list[int]) -> DraftOutcome:
         if not self.settings.drafting_enabled:
@@ -340,7 +391,11 @@ class ContentWriter:
             status = DRAFT_READY
 
         await self._fetch_missing_article_image(documents)
-        image_decision = select_document_image(documents, selection_result.topic)
+        async with self.session_factory() as session:
+            recent_images = await self._recent_image_urls(session, account_id)
+        image_decision = select_document_image(
+            documents, selection_result.topic, recent_image_urls=recent_images
+        )
         image_url = image_decision.image_url if image_decision.attach else None
         if champion.critic_score and image_url:
             champion.critic_score = self.critic.evaluate(
@@ -383,6 +438,7 @@ class ContentWriter:
                 policy_report_dict["image_relevant"] = image_decision.relevant
                 policy_report_dict["image_verified"] = image_decision.verified
                 policy_report_dict["image_reason"] = image_decision.reason
+                policy_report_dict["image_score"] = image_decision.score
                 if image_decision.credit:
                     policy_report_dict["image_credit"] = image_decision.credit
 

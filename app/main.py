@@ -95,6 +95,7 @@ def create_app(settings: Settings | None = None, *, start_scheduler: bool | None
     from app.api.drafts import router as drafts_router
     from app.api.editorial_routes import analytics_router
     from app.api.editorial_routes import router as editorial_router
+    from app.api.growth_routes import router as growth_router
     from app.api.health import router as health_router
     from app.api.metrics import router as metrics_router
     from app.api.research_routes import router as research_router
@@ -106,6 +107,7 @@ def create_app(settings: Settings | None = None, *, start_scheduler: bool | None
     app.include_router(research_router)
     app.include_router(editorial_router)
     app.include_router(analytics_router)
+    app.include_router(growth_router)
     return app
 
 

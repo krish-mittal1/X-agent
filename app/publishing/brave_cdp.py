@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import os
+import re
 import shutil
 from datetime import UTC, datetime
 from pathlib import Path
@@ -48,7 +49,14 @@ def resolve_brave_executable() -> str | None:
     for candidate in KNOWN_BRAVE_PATHS:
         if os.path.isfile(candidate):
             return candidate
-    for cmd in ("brave-browser", "brave", "google-chrome-stable", "google-chrome", "chromium-browser", "chromium"):
+    for cmd in (
+        "brave-browser",
+        "brave",
+        "google-chrome-stable",
+        "google-chrome",
+        "chromium-browser",
+        "chromium",
+    ):
         found = shutil.which(cmd)
         if found:
             return found
@@ -133,14 +141,18 @@ class BraveCDPPublisher(PublishingProvider):
             "tokens_present": has_tokens,
             "cost_inr": 0.0,
             "cost_usd": 0.0,
-            "outbound_requests_allowed": self.settings.publishing_enabled and not self.settings.dry_run,
+            "outbound_requests_allowed": self.settings.publishing_enabled
+            and not self.settings.dry_run,
             "description": "Brave Browser Native Automation (₹0 Zero-Cost, Anti-Detection)",
         }
 
     async def _get_browser_context(self, p: Any):
         """Connect over active CDP if available, otherwise launch isolated Brave context."""
         if await self.is_cdp_available():
-            logger.info("Connecting to existing Brave CDP session", extra={"extra_fields": {"cdp_url": self.cdp_url}})
+            logger.info(
+                "Connecting to existing Brave CDP session",
+                extra={"extra_fields": {"cdp_url": self.cdp_url}},
+            )
             browser = await p.chromium.connect_over_cdp(self.cdp_url, timeout=10000)
             context = browser.contexts[0] if browser.contexts else await browser.new_context()
             return browser, context, False
@@ -175,28 +187,32 @@ class BraveCDPPublisher(PublishingProvider):
         )
 
         # Inject session cookies if available
-        auth_token = self.settings.x_auth_token.get_secret_value() if self.settings.x_auth_token else None
+        auth_token = (
+            self.settings.x_auth_token.get_secret_value() if self.settings.x_auth_token else None
+        )
         ct0 = self.settings.x_ct0.get_secret_value() if self.settings.x_ct0 else None
 
         if auth_token and ct0:
-            await context.add_cookies([
-                {
-                    "name": "auth_token",
-                    "value": auth_token,
-                    "domain": ".x.com",
-                    "path": "/",
-                    "httpOnly": True,
-                    "secure": True,
-                },
-                {
-                    "name": "ct0",
-                    "value": ct0,
-                    "domain": ".x.com",
-                    "path": "/",
-                    "httpOnly": False,
-                    "secure": True,
-                },
-            ])
+            await context.add_cookies(
+                [
+                    {
+                        "name": "auth_token",
+                        "value": auth_token,
+                        "domain": ".x.com",
+                        "path": "/",
+                        "httpOnly": True,
+                        "secure": True,
+                    },
+                    {
+                        "name": "ct0",
+                        "value": ct0,
+                        "domain": ".x.com",
+                        "path": "/",
+                        "httpOnly": False,
+                        "secure": True,
+                    },
+                ]
+            )
 
         return None, context, True
 
@@ -219,12 +235,18 @@ class BraveCDPPublisher(PublishingProvider):
                 ext = ".png"
             elif ".webp" in lowered:
                 ext = ".webp"
-            file_path = temp_dir / f"x_media_{int(datetime.now(UTC).timestamp())}_{os.getpid()}{ext}"
+            file_path = (
+                temp_dir / f"x_media_{int(datetime.now(UTC).timestamp())}_{os.getpid()}{ext}"
+            )
 
-            async with httpx.AsyncClient(timeout=12.0, follow_redirects=True, verify=True) as client:
+            async with httpx.AsyncClient(
+                timeout=12.0, follow_redirects=True, verify=True
+            ) as client:
                 resp = await client.get(
                     image_url,
-                    headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                    },
                 )
                 if resp.status_code == 200 and len(resp.content) > 1500:
                     file_path.write_bytes(resp.content)
@@ -283,7 +305,11 @@ class BraveCDPPublisher(PublishingProvider):
                             img_url = None
                             if draft.policy_report and isinstance(draft.policy_report, dict):
                                 img_url = draft.policy_report.get("image_url")
-                            if not img_url and draft.verification_report and isinstance(draft.verification_report, dict):
+                            if (
+                                not img_url
+                                and draft.verification_report
+                                and isinstance(draft.verification_report, dict)
+                            ):
                                 img_url = draft.verification_report.get("image_url")
                             if img_url:
                                 temp_image = await self._download_temp_media(img_url)
@@ -295,6 +321,15 @@ class BraveCDPPublisher(PublishingProvider):
                         if draft.kind == "reply" and draft.in_reply_to_post_id:
                             intent_url += f"&in_reply_to={draft.in_reply_to_post_id}"
 
+                        # If this is a quote tweet, attach quote URL
+                        quote_url = None
+                        if draft.policy_report and isinstance(draft.policy_report, dict):
+                            quote_url = draft.policy_report.get("quoted_post_url")
+                        if not quote_url:
+                            quote_url = getattr(draft, "quoted_post_url", None)
+                        if quote_url:
+                            intent_url += f"&url={quote(str(quote_url))}"
+
                         logger.info(
                             "Navigating to X intent compose URL",
                             extra={"extra_fields": {"position": position, "draft_id": draft.id}},
@@ -305,21 +340,29 @@ class BraveCDPPublisher(PublishingProvider):
                         # If we have a verified editorial image to attach, upload via Playwright file input
                         if temp_image and temp_image.exists():
                             try:
-                                file_input = page.locator('input[data-testid="fileInput"], input[type="file"][accept*="image"]')
+                                file_input = page.locator(
+                                    'input[data-testid="fileInput"], input[type="file"][accept*="image"]'
+                                )
                                 if await file_input.count() == 0:
                                     with contextlib.suppress(Exception):
-                                        await file_input.first.wait_for(state="attached", timeout=4000)
+                                        await file_input.first.wait_for(
+                                            state="attached", timeout=4000
+                                        )
                                 if await file_input.count() > 0:
                                     logger.info(
                                         "Attaching editorial image via Brave file input",
                                         extra={"extra_fields": {"image_path": str(temp_image)}},
                                     )
-                                    await file_input.first.set_input_files(str(temp_image.resolve()))
+                                    await file_input.first.set_input_files(
+                                        str(temp_image.resolve())
+                                    )
                                     try:
-                                        await page.locator('[data-testid="attachments"], [data-testid="mediaAttachment"]').wait_for(
-                                            state="visible", timeout=12000
+                                        await page.locator(
+                                            '[data-testid="attachments"], [data-testid="mediaAttachment"]'
+                                        ).wait_for(state="visible", timeout=12000)
+                                        logger.info(
+                                            "Image attachment preview confirmed visible on X compose dialog"
                                         )
-                                        logger.info("Image attachment preview confirmed visible on X compose dialog")
                                     except Exception:
                                         await asyncio.sleep(2.5)
                             except Exception as img_err:
@@ -358,7 +401,10 @@ class BraveCDPPublisher(PublishingProvider):
                             await session.commit()
 
                     except Exception as exc:
-                        logger.exception("Error during Brave post dispatch", extra={"extra_fields": {"error": str(exc)}})
+                        logger.exception(
+                            "Error during Brave post dispatch",
+                            extra={"extra_fields": {"error": str(exc)}},
+                        )
                         return PublishResult(
                             status="failed",
                             draft_id=draft.id,
@@ -416,3 +462,139 @@ class BraveCDPPublisher(PublishingProvider):
             post_ids=post_ids,
             policy=decision,
         )
+
+    async def repost(self, target_post_url: str) -> dict[str, Any]:
+        """Repost (retweet) a tweet directly via Brave browser."""
+        if not self.settings.publishing_enabled or self.settings.dry_run:
+            logger.info(
+                "Repost skipped: dry_run active", extra={"extra_fields": {"url": target_post_url}}
+            )
+            return {"status": "simulated", "url": target_post_url, "reason": "dry_run active"}
+
+        brave_exe = resolve_brave_executable()
+        if not brave_exe and not await self.is_cdp_available():
+            return {"status": "failed", "url": target_post_url, "reason": "Brave not available"}
+
+        async with async_playwright() as p:
+            browser, context, is_owned_context = await self._get_browser_context(p)
+            try:
+                page = await context.new_page()
+                try:
+                    await page.goto(target_post_url, wait_until="domcontentloaded", timeout=35000)
+                    await asyncio.sleep(2.5)
+
+                    retweet_btn = page.locator('[data-testid="retweet"]').first
+                    await retweet_btn.wait_for(state="visible", timeout=12000)
+                    await retweet_btn.click()
+                    await asyncio.sleep(1.0)
+
+                    confirm_btn = page.locator('[data-testid="retweetConfirm"]').first
+                    await confirm_btn.wait_for(state="visible", timeout=8000)
+                    await confirm_btn.click()
+                    await asyncio.sleep(2.5)
+                    return {"status": "reposted", "url": target_post_url}
+                finally:
+                    with contextlib.suppress(Exception):
+                        await page.close()
+            finally:
+                if is_owned_context:
+                    with contextlib.suppress(Exception):
+                        await context.close()
+                elif browser:
+                    with contextlib.suppress(Exception):
+                        await browser.close()
+
+    async def fetch_tweet_details(self, tweet_url: str) -> dict[str, Any]:
+        """Fetch author and text of a tweet via Brave."""
+        if not await self.is_cdp_available() and not resolve_brave_executable():
+            return {"url": tweet_url, "author": "", "text": "", "tweet_id": ""}
+        async with async_playwright() as p:
+            browser, context, is_owned_context = await self._get_browser_context(p)
+            try:
+                page = await context.new_page()
+                try:
+                    await page.goto(tweet_url, wait_until="domcontentloaded", timeout=30000)
+                    await asyncio.sleep(2.0)
+                    tweet_article = page.locator('article[data-testid="tweet"]').first
+                    await tweet_article.wait_for(state="visible", timeout=10000)
+                    text = await tweet_article.locator(
+                        '[data-testid="tweetText"]'
+                    ).first.inner_text()
+                    user_name_elem = tweet_article.locator('[data-testid="User-Name"]').first
+                    author_text = (
+                        await user_name_elem.inner_text()
+                        if await user_name_elem.count() > 0
+                        else ""
+                    )
+                    match = re.search(r"@(\w+)", author_text)
+                    author = match.group(1) if match else ""
+                    match_id = re.search(r"/status/(\d+)", tweet_url)
+                    tweet_id = match_id.group(1) if match_id else ""
+                    return {"url": tweet_url, "author": author, "text": text, "tweet_id": tweet_id}
+                finally:
+                    with contextlib.suppress(Exception):
+                        await page.close()
+            finally:
+                if is_owned_context:
+                    with contextlib.suppress(Exception):
+                        await context.close()
+                elif browser:
+                    with contextlib.suppress(Exception):
+                        await browser.close()
+
+    async def scan_profile_tweets(self, handle: str, limit: int = 3) -> list[dict[str, Any]]:
+        """Scan latest tweets from a profile handle via Brave."""
+        clean_handle = handle.strip().lstrip("@")
+        profile_url = f"https://x.com/{clean_handle}"
+        if not await self.is_cdp_available() and not resolve_brave_executable():
+            return []
+        async with async_playwright() as p:
+            browser, context, is_owned_context = await self._get_browser_context(p)
+            try:
+                page = await context.new_page()
+                try:
+                    await page.goto(profile_url, wait_until="domcontentloaded", timeout=35000)
+                    await asyncio.sleep(2.5)
+                    tweets = []
+                    articles = page.locator('article[data-testid="tweet"]')
+                    count = min(await articles.count(), limit)
+                    for i in range(count):
+                        article = articles.nth(i)
+                        try:
+                            text_elem = article.locator('[data-testid="tweetText"]').first
+                            text = (
+                                await text_elem.inner_text() if await text_elem.count() > 0 else ""
+                            )
+                            time_link = article.locator("time").locator("xpath=..").first
+                            href = (
+                                await time_link.get_attribute("href")
+                                if await time_link.count() > 0
+                                else ""
+                            )
+                            tweet_url = (
+                                f"https://x.com{href}" if href and href.startswith("/") else href
+                            )
+                            match_id = re.search(r"/status/(\d+)", tweet_url)
+                            tweet_id = match_id.group(1) if match_id else ""
+                            if tweet_url and text:
+                                tweets.append(
+                                    {
+                                        "url": tweet_url,
+                                        "tweet_id": tweet_id,
+                                        "author": clean_handle,
+                                        "text": text,
+                                    }
+                                )
+                        except Exception:
+                            continue
+                    return tweets
+                finally:
+                    with contextlib.suppress(Exception):
+                        await page.close()
+            finally:
+                if is_owned_context:
+                    with contextlib.suppress(Exception):
+                        await context.close()
+                elif browser:
+                    with contextlib.suppress(Exception):
+                        await browser.close()

@@ -10,12 +10,22 @@ from sqlalchemy import select
 from app.agent.reply_drafter import ReplyDrafter
 from app.agent.writer import ContentWriter
 from app.analytics.metrics import AnalyticsService
+from app.growth.commentary import assess_originality
+from app.growth.pacing import (
+    daily_slots,
+    daily_target,
+    next_slot,
+    resolve_timezone,
+    slot_due,
+)
+from app.growth.ramp import compute_allowance
+from app.growth.service import GrowthService
 from app.ingestion.x_research import XMentionsIngestor
 from app.jobs.runner import JobContext
 from app.logging_config import get_logger
 from app.memory.consolidation import MemoryConsolidator
 from app.memory.models import Account, Draft, Interaction
-from app.memory.repositories import AccountRepository, SourceRepository
+from app.memory.repositories import AccountRepository, PostRepository, SourceRepository
 from app.publishing.publisher import Publisher
 from app.research.discovery import DiscoveryService
 from app.research.llm_classifier import CandidateClassifier
@@ -131,12 +141,89 @@ async def publishing(context: JobContext) -> dict[str, Any]:
         )
     if not ready:
         return {"published": 0, "reason": "no ready drafts"}
+
+    # --- growth envelope -------------------------------------------------
+    # Publishing only happens inside today's humanised slots, and never above
+    # the volume this account's age allows. Without this the scheduler posts on
+    # a fixed interval, which is the clearest automation signal an account can
+    # emit.
+    now = datetime.now(UTC)
+    allowance = compute_allowance(
+        settings=context.settings,
+        account_created_at=getattr(account, "created_at", None),
+        now=now,
+    )
+    zone = resolve_timezone(context.settings)
+    day = now.astimezone(zone).date()
+    target_posts = min(
+        allowance.posts_per_day,
+        daily_target(
+            seed=account.id,
+            day=day,
+            minimum=context.settings.posts_per_day_min,
+            maximum=context.settings.posts_per_day_max,
+        ),
+        context.settings.max_original_posts_per_day,
+    )
+    async with context.session_factory() as session:
+        originals_today = await PostRepository.count_published_since(
+            session, account.id, now - timedelta(days=1), kind="original"
+        )
+    if originals_today >= target_posts:
+        return {
+            "published": 0,
+            "reason": "daily growth allowance reached",
+            "stage": allowance.stage,
+            "posts_today": originals_today,
+            "target_posts": target_posts,
+        }
+    slots = daily_slots(
+        day=day,
+        target_posts=target_posts,
+        window_start_hour=context.settings.posting_window_start_hour,
+        window_end_hour=context.settings.posting_window_end_hour,
+        min_gap_minutes=context.settings.growth_min_post_gap_minutes,
+        seed=account.id,
+        tz=zone,
+    )
+    if slots and slot_due(
+        slots, now, tolerance_minutes=context.settings.growth_slot_tolerance_minutes
+    ) is None:
+        upcoming = next_slot(slots, now)
+        return {
+            "published": 0,
+            "reason": "outside today's posting slots",
+            "next_slot": upcoming.at.isoformat() if upcoming else None,
+            "stage": allowance.stage,
+        }
+
     publisher = Publisher(
         context.settings, context.session_factory, context.x_client,
         embedder=context.embedder,
     )
     results = []
     for draft in ready:
+        policy_report = draft.policy_report or {}
+        is_operator = bool(
+            policy_report.get("source") == "operator_command"
+            or policy_report.get("operator_approved")
+            or policy_report.get("operator_override")
+        )
+        originality = assess_originality(
+            text="\n\n".join([draft.body, *(draft.thread_parts or [])]),
+            settings=context.settings,
+            source_headline=draft.title or draft.topic or "",
+            is_operator=is_operator,
+        )
+        if not originality.passed:
+            # Hold the draft rather than post a copy-paste headline: duplicate
+            # content is what suppresses reach in the first place.
+            results.append({
+                "draft_id": draft.id,
+                "status": "held_for_originality",
+                "reasons": list(originality.issues)[:3],
+            })
+            continue
         result = await publisher.publish_original(draft.id)
         results.append({"draft_id": draft.id, "status": result.status,
                         "reasons": result.reasons[:3]})
@@ -218,7 +305,36 @@ async def analytics(context: JobContext) -> dict[str, Any]:
     return await service.collect(account.id)
 
 
+async def growth_plan(context: JobContext) -> dict[str, Any]:
+    """Build and persist today's growth plan.
+
+    Posts are scheduled by the humanised slots above; replies and follows are
+    queued here for the operator (nothing is sent automatically), and the
+    coordination guard has already removed anything that would link accounts.
+    """
+    if not context.settings.growth_enabled:
+        return {"status": "skipped", "reason": "growth layer disabled"}
+    account = await _default_account(context)
+    if account is None:
+        return {"status": "skipped", "reason": "no active account"}
+    service = GrowthService(context.settings, context.session_factory)
+    plan = await service.build(account)
+    queued = await service.persist(plan)
+    return {
+        "stage": plan.stage,
+        "target_posts": plan.target_posts,
+        "slots": [slot.at.isoformat() for slot in plan.slots],
+        "reply_targets": [target.handle for target in plan.reply_targets],
+        "follow_targets": plan.follow_targets,
+        "queued_actions": queued,
+        "rejected_actions": len(plan.rejected_actions),
+        "link_budget": plan.link_budget,
+        "notes": plan.notes[:5],
+    }
+
+
 TASKS = {
+    "growth_plan": growth_plan,
     "rss_ingestion": rss_ingestion,
     "github_discovery": github_discovery,
     "ranking": ranking,

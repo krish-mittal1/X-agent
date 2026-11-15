@@ -191,6 +191,50 @@ class Settings(BaseSettings):
         "follow for more"
     )
 
+    # --- growth / pacing ---------------------------------------------------
+    # X penalises metronomic, headline-only posting from young accounts. These
+    # switches define the human-shaped envelope every outbound action must fit
+    # in; see docs/GROWTH_PLAYBOOK.md for the reasoning.
+    growth_enabled: bool = True
+    posts_per_day_min: int = 3
+    posts_per_day_max: int = 6
+    posting_window_start_hour: int = 8
+    posting_window_end_hour: int = 23
+    growth_min_post_gap_minutes: float = 55.0
+    growth_slot_tolerance_minutes: float = 25.0
+    # Account-age ramp: limits stay at the warm-up floor until the account has
+    # aged, then climb linearly to the operator's targets.
+    growth_warmup_days: int = 14
+    growth_established_days: int = 28
+    growth_warmup_posts_per_day: int = 3
+    growth_warmup_replies_per_day: int = 10
+    growth_warmup_follows_per_day: int = 10
+    growth_warmup_likes_per_day: int = 15
+    growth_target_replies_per_day: int = 15
+    growth_target_follows_per_day: int = 40
+    growth_target_likes_per_day: int = 30
+    # Reply targets are people in our band, not mega-accounts.
+    growth_reply_min_followers: int = 500
+    growth_reply_max_followers: int = 100_000
+    growth_reply_min_gap_minutes: float = 6.0
+    growth_follow_min_gap_minutes: float = 4.0
+    # Originality: an opening that just restates the headline is duplicate
+    # content, which is what caps reach on a small account.
+    growth_min_commentary_words: int = 6
+    growth_max_headline_overlap: float = 0.85
+    growth_max_verbatim_words: int = 12
+    growth_link_share: float = 0.25
+    growth_require_media: bool = True
+    # Coordination guard: stops two of our own accounts touching one target.
+    growth_follow_min_seconds: float = 90.0
+    growth_like_min_seconds: float = 45.0
+    growth_reply_min_seconds: float = 120.0
+    growth_cross_account_cooldown_hours: float = 72.0
+    growth_max_actions_per_target_per_day: int = 1
+    growth_burst_window_seconds: float = 300.0
+    growth_follow_targets: str = ""  # comma/newline separated handles
+    growth_plan_interval_minutes: int = 60
+
     # --- scheduler ---------------------------------------------------------
     scheduler_enabled: bool = False
     ingest_interval_minutes: int = 60
@@ -232,6 +276,12 @@ class Settings(BaseSettings):
     @property
     def blocked_phrases(self) -> tuple[str, ...]:
         return tuple(p.lower() for p in self._split_csv(self.banned_phrases))
+
+    @property
+    def growth_follow_handles(self) -> tuple[str, ...]:
+        return tuple(
+            handle.lstrip("@") for handle in self._split_csv(self.growth_follow_targets)
+        )
 
     @property
     def scoring_weights(self) -> dict[str, float]:
@@ -355,6 +405,27 @@ class Settings(BaseSettings):
             raise ValueError(
                 "ADMIN_API_TOKEN is required in production: the admin API must be authenticated"
             )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_growth(self) -> Settings:
+        if self.posts_per_day_min > self.posts_per_day_max:
+            raise ValueError("POSTS_PER_DAY_MIN cannot exceed POSTS_PER_DAY_MAX")
+        if self.posts_per_day_min < 0:
+            raise ValueError("POSTS_PER_DAY_MIN cannot be negative")
+        if not 0 <= self.posting_window_start_hour < self.posting_window_end_hour <= 24:
+            raise ValueError(
+                "POSTING_WINDOW_START_HOUR must be before POSTING_WINDOW_END_HOUR "
+                "and both must be within 0-24"
+            )
+        if self.growth_established_days <= self.growth_warmup_days:
+            raise ValueError("GROWTH_ESTABLISHED_DAYS must be greater than GROWTH_WARMUP_DAYS")
+        if self.growth_reply_min_followers >= self.growth_reply_max_followers:
+            raise ValueError(
+                "GROWTH_REPLY_MIN_FOLLOWERS must be below GROWTH_REPLY_MAX_FOLLOWERS"
+            )
+        if not 0.0 <= self.growth_link_share <= 1.0:
+            raise ValueError("GROWTH_LINK_SHARE must be between 0 and 1")
         return self
 
     def redacted_dump(self) -> dict[str, object]:
