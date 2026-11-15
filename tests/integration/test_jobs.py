@@ -33,7 +33,10 @@ async def test_job_runs_once_per_slot(settings, engine) -> None:
     first = await run_slot("test_job", context, task, interval_seconds=3600, now=now)
     second = await run_slot("test_job", context, task, interval_seconds=3600, now=now)
     later = await run_slot(
-        "test_job", context, task, interval_seconds=3600,
+        "test_job",
+        context,
+        task,
+        interval_seconds=3600,
         now=datetime(2026, 10, 28, 13, 0, tzinfo=UTC),
     )
     assert first["status"] == "succeeded"
@@ -51,8 +54,11 @@ async def test_job_failure_is_recorded_not_raised(settings, engine) -> None:
         raise RuntimeError("boom")
 
     result = await run_slot(
-        "failing_job", make_context(settings), failing,
-        interval_seconds=60, now=datetime(2026, 10, 28, 12, 0, tzinfo=UTC),
+        "failing_job",
+        make_context(settings),
+        failing,
+        interval_seconds=60,
+        now=datetime(2026, 10, 28, 12, 0, tzinfo=UTC),
     )
     assert result["status"] == "failed"
     assert "boom" in result["error"]
@@ -73,6 +79,7 @@ async def test_scheduler_registers_all_jobs(settings, engine) -> None:
         "ranking",
         "drafting",
         "publishing",
+        "growth_plan",
         "reply_drafts",
         "memory_consolidation",
         "analytics",
