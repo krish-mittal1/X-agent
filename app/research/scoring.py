@@ -35,13 +35,16 @@ _TECH_TERMS = {
     # Economy, Finance, Taxes & Regulation
     "rbi", "sebi", "gdp", "inflation", "gst", "rupee", "taxation", "budget", "fiscal",
     "trade", "export", "import", "tariff", "manufacturing", "economy", "reform", "market",
-    # Indian Tech, AI, Startups & Space
-    "tech", "startup", "founder", "ai", "artificial intelligence", "semiconductor", "fab",
-    "upi", "ondc", "aadhaar", "dpi", "fintech", "saas", "deeptech", "unicorn", "funding",
+    # Indian Tech, AI, Startups, Consumer Giants & Quick Commerce (Competitor Niche)
+    "tech", "startup", "founder", "ai", "artificial intelligence", "ai agent", "semiconductor", "fab",
+    "upi", "ondc", "aadhaar", "dpi", "fintech", "saas", "deeptech", "unicorn", "funding", "valuation",
     "isro", "drdo", "space", "defense", "missile", "satellite", "ev", "electronics",
+    "zomato", "swiggy", "blinkit", "zepto", "quick commerce", "jio", "airtel", "vi", "tariff hike",
+    "apple", "foxconn", "tata electronics", "iphone", "nvidia", "deepfake",
+    "ola", "ola electric", "ather", "bhavish", "tcs", "infosys", "wipro", "fresher salary",
     # Infrastructure, Giants & High-Stakes Domestic Events
-    "railways", "vande bharat", "expressway", "infra", "port", "airport", "adani", "reliance",
-    "tata", "infosys", "bill", "ordinance", "protest", "strike", "cbi", "ed", "scam",
+    "railways", "vande bharat", "bullet train", "expressway", "infra", "port", "airport", "adani", "reliance",
+    "tata", "bridge", "tunnel", "chenab", "metro", "bill", "ordinance", "protest", "strike", "cbi", "ed", "scam",
     "corruption", "probe", "arrest", "bail", "verdict", "controversy", "border", "lac",
 }
 _ACTIONABLE_TERMS = {
@@ -64,12 +67,15 @@ _VIRAL_CONTROVERSY_TERMS = {
     "conman", "busted", "fake officer", "fake cbi", "fake judge", "raided", "cash stack",
     "blunder", "goof up", "hilarious", "banned", "illegal", "viral video", "stunt",
     "trap", "extortion", "caught red handed", "red-handed",
-    # Relatable consumer outrage & public friction
+    # Relatable consumer outrage & public friction (High X engagement)
     "charging port", "train delayed", "tatkal", "irctc", "refund", "uber cancel",
-    "ola scam", "swiggy fee", "zomato fee", "bangalore rent", "security deposit",
+    "ola scam", "swiggy fee", "zomato fee", "platform fee", "surge price", "surge pricing",
+    "bangalore rent", "security deposit", "landlord", "flat rent", "bachelor",
     "70 hour", "70 hours", "toxic boss", "work culture", "layoff", "layoffs",
+    "fresher salary", "notice period", "offer revoked", "tariff hike", "plan removed",
     "tax notice", "income tax notice", "gst on", "toll plaza", "fastag", "challan",
-    "fine imposed", "consumer court", "misleading ad", "fake claims",
+    "fine imposed", "consumer court", "misleading ad", "fake claims", "service center",
+    "kunal kamra", "bhavish aggarwal", "ev fire",
     # Sensational busts & celebrity/influencer drama
     "betting app", "mahadev app", "influencer raided", "money laundering", "hawala",
     "ed summons", "cbi summons", "lookout notice", "fir lodged",
@@ -80,7 +86,7 @@ _BORING_TERMS = {
     "experience centre", "experience centres", "customer acquisition", "brand transformation",
     "press release", "showroom", "showrooms", "encyclopedia", "britannica", "wikipedia",
     "historical archive", "q1 results", "q2 results", "q3 results", "q4 results",
-    # Dry official / bureaucratic routine announcements
+    # Dry official / bureaucratic routine announcements & police wires
     "inauguration ceremony", "inaugurates bypass", "foundation stone", "lays foundation",
     "held meeting with", "delegation arrives", "bilateral talks", "courtesy visit",
     "calls on governor", "calls on cm", "reviews preparedness", "disaster review",
@@ -89,6 +95,11 @@ _BORING_TERMS = {
     "transferred and posted", "obituary", "condolences", "pays homage", "pays tributes",
     "weather forecast", "light rainfall expected", "maximum temperature", "aqi worsens to",
     "horoscope", "astrology", "zodiac", "rashifal", "traffic advisory",
+    # Sterile police blotters & routine technical / court filings (causes boring AI news)
+    "precautionary measure", "without reported casualties", "no casualties reported",
+    "interim bail", "bail plea", "plea filed", "hearing adjourned", "court seeks response",
+    "notices issued", "chain snatching", "gold seized", "case registered against",
+    "minor accident", "routine technical snag", "precautionary landing", "gear retraction failure",
 }
 _MARKETING_TERMS = {
     "revolutionary", "game-changing", "game changer", "unleash", "supercharge",
