@@ -202,16 +202,18 @@ class EngagementService:
 
     async def publish_engagement(self, draft_or_id: int | Draft) -> PublishResult:
         """Publish an approved reply or quote draft directly via Brave CDP."""
+        target_draft: Draft
         if isinstance(draft_or_id, Draft):
-            draft = draft_or_id
+            target_draft = draft_or_id
         else:
             async with self.session_factory() as session:
-                draft = await session.get(Draft, draft_or_id)
-                if not draft:
+                loaded = await session.get(Draft, draft_or_id)
+                if loaded is None:
                     raise ValueError(f"Draft {draft_or_id} not found")
+                target_draft = loaded
 
-        parts = [draft.body]
-        return await self.publisher.publish(draft, parts)
+        parts = [target_draft.body]
+        return await self.publisher.publish(target_draft, parts)
 
     async def repost(self, target_post_url: str) -> dict[str, Any]:
         """Directly retweet/repost a target tweet via Brave browser."""
