@@ -29,6 +29,7 @@ def _job_plan(settings: Settings) -> list[tuple[str, int]]:
         ("drafting", settings.draft_interval_minutes * 60),
         ("publishing", settings.publish_interval_minutes * 60),
         ("growth_plan", settings.growth_plan_interval_minutes * 60),
+        ("outbound_engagement", settings.outbound_engagement_interval_minutes * 60),
         ("reply_drafts", settings.reply_draft_interval_minutes * 60),
         ("memory_consolidation", settings.consolidation_interval_hours * 3600),
         ("analytics", settings.analytics_interval_hours * 3600),

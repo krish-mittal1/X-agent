@@ -80,6 +80,7 @@ async def test_scheduler_registers_all_jobs(settings, engine) -> None:
         "drafting",
         "publishing",
         "growth_plan",
+        "outbound_engagement",
         "reply_drafts",
         "memory_consolidation",
         "analytics",

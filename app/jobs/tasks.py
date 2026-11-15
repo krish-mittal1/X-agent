@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, Literal
 
 from sqlalchemy import select
 
@@ -333,6 +333,113 @@ async def growth_plan(context: JobContext) -> dict[str, Any]:
     }
 
 
+async def outbound_engagement(context: JobContext) -> dict[str, Any]:
+    """Autonomous Outbound Viral Engagement Worker.
+
+    Scans top Indian viral accounts (@IndianTechGuide, @NewsAlgebraIND, @ANI),
+    identifies unengaged breaking posts, generates sharp takes with Gemini,
+    and publishes live via Brave CDP without manual intervention.
+    """
+    if (
+        not getattr(context.settings, "outbound_engagement_enabled", True)
+        or not context.settings.publishing_enabled
+        or context.settings.dry_run
+    ):
+        return {
+            "status": "skipped",
+            "reason": "publishing or outbound engagement disabled / dry run",
+        }
+    if context.settings.emergency_pause:
+        return {"status": "skipped", "reason": "emergency pause"}
+
+    account = await _default_account(context)
+    if account is None:
+        return {"status": "skipped", "reason": "no active account"}
+
+    from app.growth.engagement import EngagementService
+    from app.publishing.brave_cdp import BraveCDPPublisher, resolve_brave_executable
+
+    publisher = BraveCDPPublisher(context.settings, context.session_factory)
+    if not await publisher.is_cdp_available() and not resolve_brave_executable():
+        return {"status": "skipped", "reason": "brave cdp unavailable"}
+
+    service = EngagementService(
+        context.settings,
+        context.llm,
+        context.session_factory,
+        publisher=publisher,
+    )
+
+    target_handles = list(context.settings.growth_follow_handles) or [
+        "IndianTechGuide",
+        "NewsAlgebraIND",
+        "ANI",
+    ]
+
+    candidates = await service.scan_handles_for_candidates(target_handles, limit_per_handle=2)
+    if not candidates:
+        return {"status": "skipped", "reason": "no candidates found from scanned handles"}
+
+    # Filter out tweets we already engaged with
+    async with context.session_factory() as session:
+        existing_drafts = await session.scalars(
+            select(Draft.policy_report).where(
+                Draft.account_id == account.id,
+                Draft.kind.in_(["reply", "original"]),
+            )
+        )
+        engaged_ids = set()
+        for report in existing_drafts:
+            if isinstance(report, dict):
+                tid = report.get("target_post_id")
+                if tid:
+                    engaged_ids.add(str(tid))
+
+    fresh_candidates = [
+        c for c in candidates if c.get("tweet_id") and str(c["tweet_id"]) not in engaged_ids
+    ]
+    if not fresh_candidates:
+        return {"status": "skipped", "reason": "all recent candidates already engaged"}
+
+    chosen = fresh_candidates[0]
+    target_url = chosen["url"]
+    target_text = chosen["text"]
+    target_author = chosen["author"]
+
+    bangers = await service.generate_bangers(target_text, target_author=target_author)
+
+    # Alternate between quote-tweet and sarcastic reply based on text length and hour
+    now_hour = datetime.now(UTC).hour
+    action: Literal["reply", "quote"] = "quote" if (now_hour % 2 == 0) else "reply"
+    style = "quote_tweet" if action == "quote" else "sarcastic"
+    chosen_content = bangers.get(style) or bangers.get("sarcastic") or bangers.get("value_add", "")
+
+    if not chosen_content:
+        return {"status": "skipped", "reason": "failed to generate banger content"}
+
+    draft = await service.create_engagement_draft(
+        account_id=account.id,
+        target_post_url=target_url,
+        content=chosen_content,
+        action=action,
+        style=style,
+    )
+
+    res = await service.publish_engagement(draft)
+    logger.info(
+        "Autonomous outbound engagement dispatched",
+        extra={"extra_fields": {"target_url": target_url, "action": action, "status": res.status}},
+    )
+    return {
+        "status": res.status,
+        "action": action,
+        "target_url": target_url,
+        "author": target_author,
+        "content": chosen_content,
+        "post_ids": res.post_ids,
+    }
+
+
 TASKS = {
     "growth_plan": growth_plan,
     "rss_ingestion": rss_ingestion,
@@ -340,6 +447,7 @@ TASKS = {
     "ranking": ranking,
     "drafting": drafting,
     "publishing": publishing,
+    "outbound_engagement": outbound_engagement,
     "reply_drafts": reply_drafts,
     "memory_consolidation": consolidation,
     "analytics": analytics,

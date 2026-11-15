@@ -251,6 +251,8 @@ class Settings(BaseSettings):
     draft_interval_minutes: int = 180
     publish_interval_minutes: int = 30
     reply_draft_interval_minutes: int = 60
+    outbound_engagement_interval_minutes: int = 120
+    outbound_engagement_enabled: bool = True
     consolidation_interval_hours: int = 24
     analytics_interval_hours: int = 6
     job_lease_seconds: int = 600
