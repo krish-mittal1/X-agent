@@ -560,9 +560,26 @@ class BraveCDPPublisher(PublishingProvider):
                 page = await context.new_page()
                 try:
                     await page.goto(profile_url, wait_until="domcontentloaded", timeout=35000)
-                    await asyncio.sleep(2.5)
-                    tweets = []
                     articles = page.locator('article[data-testid="tweet"]')
+                    try:
+                        await articles.first.wait_for(state="visible", timeout=12000)
+                    except Exception:
+                        # If first tweet isn't immediately visible, dismiss any modal and scroll
+                        for close_sel in [
+                            '[data-testid="app-bar-close"]',
+                            'button[aria-label="Close"]',
+                            '[data-testid="sheet:close"]',
+                        ]:
+                            btn = page.locator(close_sel).first
+                            if await btn.count() > 0:
+                                with contextlib.suppress(Exception):
+                                    await btn.click()
+                                    await asyncio.sleep(0.5)
+
+                    await page.evaluate("window.scrollBy(0, 300)")
+                    await asyncio.sleep(1.0)
+
+                    tweets = []
                     count = min(await articles.count(), limit)
                     for i in range(count):
                         article = articles.nth(i)
@@ -571,12 +588,21 @@ class BraveCDPPublisher(PublishingProvider):
                             text = (
                                 await text_elem.inner_text() if await text_elem.count() > 0 else ""
                             )
-                            time_link = article.locator("time").locator("xpath=..").first
-                            href = (
-                                await time_link.get_attribute("href")
-                                if await time_link.count() > 0
-                                else ""
-                            )
+
+                            # Find status link with multiple selector strategies
+                            href = ""
+                            status_links = article.locator('a[href*="/status/"]')
+                            num_links = await status_links.count()
+                            for k in range(num_links):
+                                candidate = await status_links.nth(k).get_attribute("href") or ""
+                                candidate = candidate.split("?")[0]
+                                if re.search(r"/[^/]+/status/\d+$", candidate):
+                                    href = candidate
+                                    break
+
+                            if not href and num_links > 0:
+                                href = (await status_links.first.get_attribute("href") or "").split("?")[0]
+
                             tweet_url = (
                                 f"https://x.com{href}" if href and href.startswith("/") else href
                             )

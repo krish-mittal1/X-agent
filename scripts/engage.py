@@ -79,6 +79,13 @@ async def run_engagement(
             )
             if not candidates:
                 print("[-] No candidate tweets found from scanned profiles.")
+                print(
+                    "    Tip: Headless browsers may hit X guest rate-limits on profile timelines.\n"
+                    "    You can engage directly with any tweet URL:\n"
+                    "      python -m scripts.engage --tweet https://x.com/username/status/123456 [--live]\n"
+                    "    Or provide text directly to generate bangers:\n"
+                    "      python -m scripts.engage --tweet https://x.com/username/status/123456 --text 'Breaking update here' [--live]"
+                )
                 return
 
             chosen = candidates[0]
