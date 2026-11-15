@@ -197,14 +197,18 @@ class EngagementService:
                 target_author_handle=author if author else None,
                 policy_report=policy_report,
             )
+            await session.commit()
             return draft
 
-    async def publish_engagement(self, draft_id: int) -> PublishResult:
+    async def publish_engagement(self, draft_or_id: int | Draft) -> PublishResult:
         """Publish an approved reply or quote draft directly via Brave CDP."""
-        async with self.session_factory() as session:
-            draft = await session.get(Draft, draft_id)
-            if not draft:
-                raise ValueError(f"Draft {draft_id} not found")
+        if isinstance(draft_or_id, Draft):
+            draft = draft_or_id
+        else:
+            async with self.session_factory() as session:
+                draft = await session.get(Draft, draft_or_id)
+                if not draft:
+                    raise ValueError(f"Draft {draft_or_id} not found")
 
         parts = [draft.body]
         return await self.publisher.publish(draft, parts)

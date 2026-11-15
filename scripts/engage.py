@@ -164,7 +164,7 @@ async def run_engagement(
             style=style,
         )
 
-        result = await service.publish_engagement(draft.id)
+        result = await service.publish_engagement(draft)
         print(f"[+] Status: {result.status}")
         if result.post_ids:
             print(f"[+] Post IDs: {result.post_ids}")
