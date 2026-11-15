@@ -146,96 +146,133 @@ async def cleanup_timeline(handle: str, min_views: int = 50, live: bool = False)
 
             deleted_count = 0
             kept_count = 0
-            max_scrolls = 6
+            max_deletions = 200
+            attempted_texts: set[str] = set()
 
-            for scroll_idx in range(max_scrolls):
-                count = await articles.count()
-                print(f"[*] Pass {scroll_idx + 1}: Found {count} tweets on screen...")
+            if not live:
+                # Dry run preview across 6 scrolls
+                for scroll_idx in range(6):
+                    articles = page.locator('article[data-testid="tweet"]')
+                    count = await articles.count()
+                    print(f"[*] Pass {scroll_idx + 1}: Found {count} tweets on screen...")
 
-                for i in range(count):
-                    try:
+                    for i in range(count):
                         article = articles.nth(i)
-                        if not await article.is_visible():
-                            continue
-
-                        # Extract text
                         text_elem = article.locator('[data-testid="tweetText"]').first
                         tweet_text = (
                             await text_elem.inner_text() if await text_elem.count() > 0 else ""
                         )
                         lower_text = tweet_text.lower()
 
-                        # Check if protected banger
-                        is_protected = any(kw in lower_text for kw in PROTECTED_KEYWORDS)
-
-                        # Extract view count
-                        view_count = 0
-                        analytics_link = article.locator('a[href*="/analytics"]').first
-                        if await analytics_link.count() > 0:
-                            v_text = await analytics_link.inner_text()
-                            view_count = parse_view_count(v_text)
-
-                        # Decision
-                        if is_protected:
-                            print(f"[KEEP (Protected Banger)] \"{tweet_text[:60]}...\" (Views: {view_count})")
+                        if any(kw in lower_text for kw in PROTECTED_KEYWORDS):
+                            print(f"[KEEP (Protected Banger)] \"{tweet_text[:60]}...\"")
                             kept_count += 1
                             continue
+
+                        analytics_link = article.locator('a[href*="/analytics"]').first
+                        view_count = 0
+                        if await analytics_link.count() > 0:
+                            view_count = parse_view_count(await analytics_link.inner_text())
 
                         if view_count >= min_views:
                             print(f"[KEEP (Views >= {min_views})] \"{tweet_text[:60]}...\" (Views: {view_count})")
                             kept_count += 1
                             continue
 
-                        # Candidate for deletion
                         print(f"[DELETE CANDIDATE] \"{tweet_text[:60]}...\" (Views: {view_count})")
+                        print("   [DRY RUN] Would click caret -> Delete -> Confirm.")
+                        deleted_count += 1
 
-                        if not live:
-                            print("   [DRY RUN] Would click caret -> Delete -> Confirm.")
-                            deleted_count += 1
-                            continue
+                    await page.evaluate("window.scrollBy(0, 1000)")
+                    await asyncio.sleep(2.0)
 
-                        # Live Deletion via UI
-                        caret = article.locator('[data-testid="caret"]').first
-                        if await caret.count() == 0:
-                            continue
+            else:
+                # Live Deletion loop: continuously delete until done or bottom reached
+                print("[*] Starting continuous live deletion loop...")
+                consecutive_idle_passes = 0
+                while deleted_count < max_deletions and consecutive_idle_passes < 4:
+                    articles = page.locator('article[data-testid="tweet"]')
+                    count = await articles.count()
+                    if count == 0:
+                        break
 
-                        await caret.click()
-                        await asyncio.sleep(1.0)
+                    candidate_deleted = False
+                    for i in range(count):
+                        try:
+                            article = articles.nth(i)
+                            if not await article.is_visible():
+                                continue
 
-                        # Find Delete menu item
-                        delete_item = page.locator(
-                            '[data-testid="Dropdown"] >> text="Delete", div[role="menuitem"]:has-text("Delete")'
-                        ).first
-                        if await delete_item.count() > 0:
-                            await delete_item.click()
+                            text_elem = article.locator('[data-testid="tweetText"]').first
+                            tweet_text = (
+                                await text_elem.inner_text() if await text_elem.count() > 0 else ""
+                            )
+                            lower_text = tweet_text.lower()
+
+                            # Check if protected
+                            if any(kw in lower_text for kw in PROTECTED_KEYWORDS):
+                                continue
+
+                            # Check if already attempted and failed
+                            if tweet_text[:50] in attempted_texts:
+                                continue
+
+                            # Check view count
+                            view_count = 0
+                            analytics_link = article.locator('a[href*="/analytics"]').first
+                            if await analytics_link.count() > 0:
+                                view_count = parse_view_count(await analytics_link.inner_text())
+
+                            if view_count >= min_views:
+                                continue
+
+                            # Delete this candidate!
+                            print(f"[*] Deleting candidate #{deleted_count + 1}: \"{tweet_text[:60]}...\" (Views: {view_count})")
+                            caret = article.locator('[data-testid="caret"]').first
+                            if await caret.count() == 0:
+                                attempted_texts.add(tweet_text[:50])
+                                continue
+
+                            await caret.scroll_into_view_if_needed()
+                            await caret.click()
                             await asyncio.sleep(1.0)
 
-                            # Confirm deletion
-                            confirm_btn = page.locator(
-                                '[data-testid="confirmationSheetConfirm"]'
-                            ).first
-                            await confirm_btn.wait_for(state="visible", timeout=5000)
-                            await confirm_btn.click()
-                            await asyncio.sleep(2.5)
+                            delete_btn = page.locator('[role="menuitem"]:has-text("Delete")').first
+                            if await delete_btn.count() == 0:
+                                delete_btn = page.locator('span:text-is("Delete")').first
 
-                            print(f"   [+] DELETED live from X: \"{tweet_text[:60]}...\"")
-                            deleted_count += 1
-                            # Break inner loop and refresh articles locator
-                            break
-                        else:
-                            # Close dropdown if delete option was not available
-                            await page.keyboard.press("Escape")
-                            await asyncio.sleep(0.5)
+                            if await delete_btn.count() > 0:
+                                await delete_btn.click()
+                                await asyncio.sleep(1.0)
 
-                    except Exception as err:
-                        print(f"   [-] Error processing tweet item: {err}")
-                        with contextlib.suppress(Exception):
-                            await page.keyboard.press("Escape")
-                        continue
+                                confirm_btn = page.locator('[data-testid="confirmationSheetConfirm"]').first
+                                await confirm_btn.wait_for(state="visible", timeout=6000)
+                                await confirm_btn.click()
+                                await asyncio.sleep(2.0)
 
-                # Scroll down slightly to discover more older tweets
-                await page.evaluate("window.scrollBy(0, 800)")
-                await asyncio.sleep(2.0)
+                                print(f"   [+] DELETED live from X: \"{tweet_text[:60]}...\"")
+                                deleted_count += 1
+                                candidate_deleted = True
+                                consecutive_idle_passes = 0
+                                # Break out so we re-read updated articles from DOM
+                                break
+                            else:
+                                await page.keyboard.press("Escape")
+                                await asyncio.sleep(0.5)
+                                attempted_texts.add(tweet_text[:50])
+
+                        except Exception as err:
+                            print(f"   [-] Error deleting tweet: {err}")
+                            with contextlib.suppress(Exception):
+                                await page.keyboard.press("Escape")
+                            attempted_texts.add(tweet_text[:50])
+                            continue
+
+                    if not candidate_deleted:
+                        consecutive_idle_passes += 1
+                        print(f"[*] No candidates in current viewport, scrolling down (idle pass {consecutive_idle_passes}/4)...")
+                        await page.evaluate("window.scrollBy(0, 800)")
+                        await asyncio.sleep(2.0)
 
             print("\n" + "=" * 50)
             print(f"CLEANUP SUMMARY: Kept: {kept_count} | Deleted: {deleted_count}")
