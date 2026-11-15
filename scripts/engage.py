@@ -110,7 +110,14 @@ async def run_engagement(
             if not target_text:
                 author_from_url, post_id = extract_tweet_metadata(target_url)
                 target_author = author_from_url
-                target_text = override_text or f"Trending discussion by @{author_from_url}"
+                if override_text:
+                    target_text = override_text
+                else:
+                    print(f"[-] Could not find or scrape tweet text from {target_url}.")
+                    print(
+                        "    Make sure the tweet URL actually exists on X, or pass --text '<content>' directly."
+                    )
+                    return
 
         if not target_text:
             print("Error: Unable to resolve tweet content to engage with. Pass --text '<content>'")

@@ -85,6 +85,8 @@ services:
       # Persistent temp dir for image attachment downloads (avoids a 12s
       # download on every post).
       - media_tmp:/app/.temp_media
+      - ./app:/app/app
+      - ./scripts:/app/scripts
     depends_on:
       db:
         condition: service_healthy

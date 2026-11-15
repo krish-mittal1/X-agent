@@ -513,10 +513,10 @@ class BraveCDPPublisher(PublishingProvider):
             try:
                 page = await context.new_page()
                 try:
-                    await page.goto(tweet_url, wait_until="domcontentloaded", timeout=30000)
+                    await page.goto(tweet_url, wait_until="domcontentloaded", timeout=25000)
                     await asyncio.sleep(2.0)
                     tweet_article = page.locator('article[data-testid="tweet"]').first
-                    await tweet_article.wait_for(state="visible", timeout=10000)
+                    await tweet_article.wait_for(state="visible", timeout=8000)
                     text = await tweet_article.locator(
                         '[data-testid="tweetText"]'
                     ).first.inner_text()
@@ -531,6 +531,12 @@ class BraveCDPPublisher(PublishingProvider):
                     match_id = re.search(r"/status/(\d+)", tweet_url)
                     tweet_id = match_id.group(1) if match_id else ""
                     return {"url": tweet_url, "author": author, "text": text, "tweet_id": tweet_id}
+                except Exception as exc:
+                    logger.warning(
+                        "Failed to scrape tweet details (tweet may be 404 or protected)",
+                        extra={"extra_fields": {"url": tweet_url, "error": str(exc)}},
+                    )
+                    return {"url": tweet_url, "author": "", "text": "", "tweet_id": ""}
                 finally:
                     with contextlib.suppress(Exception):
                         await page.close()
@@ -588,6 +594,12 @@ class BraveCDPPublisher(PublishingProvider):
                         except Exception:
                             continue
                     return tweets
+                except Exception as exc:
+                    logger.warning(
+                        "Failed to scan profile tweets (profile may be private or rate limited)",
+                        extra={"extra_fields": {"handle": clean_handle, "error": str(exc)}},
+                    )
+                    return []
                 finally:
                     with contextlib.suppress(Exception):
                         await page.close()
