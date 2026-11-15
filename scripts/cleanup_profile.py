@@ -35,7 +35,7 @@ PROTECTED_KEYWORDS = [
     "38 people",
     "57 ai agents",
     "whatsapp chatbot",
-    "orr",
+    "stuck on the orr",
     "bangalore-rejection",
 ]
 
@@ -96,10 +96,44 @@ async def cleanup_timeline(handle: str, min_views: int = 50, live: bool = False)
             args=launch_args,
         )
 
+        # Inject session cookies if available
+        auth_token = (
+            settings.x_auth_token.get_secret_value() if settings.x_auth_token else None
+        )
+        ct0 = settings.x_ct0.get_secret_value() if settings.x_ct0 else None
+
+        if auth_token and ct0:
+            await context.add_cookies(
+                [
+                    {
+                        "name": "auth_token",
+                        "value": auth_token,
+                        "domain": ".x.com",
+                        "path": "/",
+                        "httpOnly": True,
+                        "secure": True,
+                    },
+                    {
+                        "name": "ct0",
+                        "value": ct0,
+                        "domain": ".x.com",
+                        "path": "/",
+                        "httpOnly": False,
+                        "secure": True,
+                    },
+                ]
+            )
+
         try:
             page = await context.new_page()
             print(f"[*] Navigating to {profile_url}...")
-            await page.goto(profile_url, wait_until="domcontentloaded", timeout=40000)
+            try:
+                await page.goto(profile_url, wait_until="domcontentloaded", timeout=40000)
+            except Exception as nav_err:
+                print(f"[*] Navigation note ({nav_err}), navigating via home...")
+                await page.goto("https://x.com/home", wait_until="domcontentloaded", timeout=30000)
+                await asyncio.sleep(2.0)
+                await page.goto(profile_url, wait_until="domcontentloaded", timeout=30000)
             await asyncio.sleep(4.0)
 
             # Wait for articles to load
