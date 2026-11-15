@@ -39,6 +39,8 @@ class BangerProposal:
     sarcastic: str
     value_add: str
     quote_tweet: str
+    rage_bait: str = ""
+    bakchodi: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -49,6 +51,8 @@ class BangerProposal:
             "sarcastic": self.sarcastic,
             "value_add": self.value_add,
             "quote_tweet": self.quote_tweet,
+            "rage_bait": self.rage_bait,
+            "bakchodi": self.bakchodi,
         }
 
 
@@ -84,34 +88,38 @@ class EngagementService:
         target_author: str = "",
         context: str = "",
     ) -> dict[str, str]:
-        """Generate 3 viral Indian engagement takes: sarcastic, value-add, and quote-tweet."""
+        """Generate all-rounder viral takes: sarcastic, rage_bait, bakchodi, quote_tweet, value_add."""
         clean_text = target_text.strip()
         if not clean_text:
             raise ValueError("target_text cannot be empty")
 
         system_prompt = (
-            "You are @ssh_bugs on X, an ultra-sharp, observant, high-IQ Indian commentator.\n"
-            "You are looking at a viral tweet and drafting 3 distinct, scroll-stopping responses.\n\n"
+            "You are @ssh_bugs on X, an all-rounder Indian internet voice (mix of @sagarcasm, @GabbbarSingh, and @peakbengaluru).\n"
+            "You are looking at a viral tweet and drafting distinct, scroll-stopping responses for maximum reach and debate.\n\n"
             "YOUR VOICE & IDENTITY:\n"
-            "- You write like a real, witty human in an Indian group chat or tech/news circle.\n"
-            "- Conversational, plain everyday English that hits in 2 seconds.\n"
-            "- ZERO AI FLUFF: Never use 'delve', 'testament to', 'game changer', 'it is worth noting', 'in my opinion'.\n"
-            "- ZERO HASHTAGS: Never include hashtags or marketing buzzwords.\n\n"
-            "THE 3 REQUIRED STYLES:\n"
-            "1. SARCASTIC (Max 180 chars): Witty, dry reality-check cutting through the PR, spin, or hypocrisy. Highlight the unspoken irony.\n"
-            "2. VALUE_ADD (Max 220 chars): The missing context, real numbers, or direct impact on an everyday Indian's wallet or life.\n"
-            "3. QUOTE_TWEET (Max 220 chars): An above-the-fold hook for quote-tweeting this on our timeline to start a debate.\n\n"
+            "- Ultra-relatable, sharp, conversational, desi internet native.\n"
+            "- You do bakchodi, sarcastic burns, rage-baiting takes that provoke arguments, and funny 1-line quote captions.\n"
+            "- ZERO AI FLUFF: Never say 'delve', 'testament to', 'game changer', 'it remains to be seen', 'in my opinion'.\n"
+            "- ZERO HASHTAGS: Never include hashtags or robotic emojis.\n\n"
+            "THE 5 REQUIRED ALL-ROUNDER STYLES:\n"
+            "1. SARCASTIC (Max 180 chars): Witty, dry reality-check cutting through the PR or hypocrisy with conversational irony.\n"
+            "2. RAGE_BAIT (Max 200 chars): A spicy, controversial unpopular opinion that forces people to comment and argue.\n"
+            "3. BAKCHODI (Max 180 chars): Pure desi group-chat humor, relatable adulting/office/life observation, deadpan punchline.\n"
+            "4. QUOTE_TWEET (Max 180 chars): A killer 1-line headline caption to place on top of the quoted tweet (like 'Bro thought he was...').\n"
+            "5. VALUE_ADD (Max 220 chars): The unspoken financial reality, hidden cost, or hard metrics.\n\n"
             "OUTPUT FORMAT (Strict):\n"
             "SARCASTIC: <text under 180 chars>\n"
-            "VALUE_ADD: <text under 220 chars>\n"
-            "QUOTE_TWEET: <text under 220 chars>"
+            "RAGE_BAIT: <text under 200 chars>\n"
+            "BAKCHODI: <text under 180 chars>\n"
+            "QUOTE_TWEET: <text under 180 chars>\n"
+            "VALUE_ADD: <text under 220 chars>"
         )
 
         user_content = (
             f'TARGET TWEET:\n"""{clean_text}"""\n'
             + (f"TARGET AUTHOR: @{target_author}\n" if target_author else "")
             + (f"ADDITIONAL CONTEXT: {context}\n" if context else "")
-            + "Draft the 3 distinct bangers now:"
+            + "Draft the all-rounder bangers now:"
         )
 
         resp = await self.llm.generate(
@@ -120,25 +128,31 @@ class EngagementService:
                 LLMMessage(role="user", content=user_content),
             ],
             operation="generate_bangers",
-            temperature=0.75,
-            max_tokens=300,
+            temperature=0.82,
+            max_tokens=400,
         )
 
         raw = resp.text.strip()
         parsed: dict[str, str] = {
             "sarcastic": "",
-            "value_add": "",
+            "rage_bait": "",
+            "bakchodi": "",
             "quote_tweet": "",
+            "value_add": "",
         }
 
         for line in raw.splitlines():
             line_str = line.strip()
             if line_str.upper().startswith("SARCASTIC:"):
                 parsed["sarcastic"] = line_str[10:].strip().strip('"').strip("'")
-            elif line_str.upper().startswith("VALUE_ADD:"):
-                parsed["value_add"] = line_str[10:].strip().strip('"').strip("'")
+            elif line_str.upper().startswith("RAGE_BAIT:"):
+                parsed["rage_bait"] = line_str[10:].strip().strip('"').strip("'")
+            elif line_str.upper().startswith("BAKCHODI:"):
+                parsed["bakchodi"] = line_str[9:].strip().strip('"').strip("'")
             elif line_str.upper().startswith("QUOTE_TWEET:"):
                 parsed["quote_tweet"] = line_str[12:].strip().strip('"').strip("'")
+            elif line_str.upper().startswith("VALUE_ADD:"):
+                parsed["value_add"] = line_str[10:].strip().strip('"').strip("'")
 
         # Fallback if raw text lacked keys
         if not parsed["sarcastic"]:
@@ -148,9 +162,13 @@ class EngagementService:
             if valid_lines:
                 parsed["sarcastic"] = valid_lines[0]
             if len(valid_lines) > 1:
-                parsed["value_add"] = valid_lines[1]
+                parsed["rage_bait"] = valid_lines[1]
             if len(valid_lines) > 2:
                 parsed["quote_tweet"] = valid_lines[2]
+            if len(valid_lines) > 3:
+                parsed["bakchodi"] = valid_lines[3]
+            if len(valid_lines) > 4:
+                parsed["value_add"] = valid_lines[4]
 
         return parsed
 
@@ -218,6 +236,10 @@ class EngagementService:
     async def repost(self, target_post_url: str) -> dict[str, Any]:
         """Directly retweet/repost a target tweet via Brave browser."""
         return await self.publisher.repost(target_post_url)
+
+    async def like(self, target_post_url: str) -> dict[str, Any]:
+        """Like a target tweet via Brave browser (natural human engagement)."""
+        return await self.publisher.like(target_post_url)
 
     async def scan_handles_for_candidates(
         self, handles: list[str], limit_per_handle: int = 2

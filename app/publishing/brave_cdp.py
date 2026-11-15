@@ -504,6 +504,39 @@ class BraveCDPPublisher(PublishingProvider):
                     with contextlib.suppress(Exception):
                         await browser.close()
 
+    async def like(self, target_post_url: str) -> dict[str, Any]:
+        """Like a target post via Brave browser (natural human behavior)."""
+        if not self.settings.publishing_enabled or self.settings.dry_run:
+            return {"status": "simulated", "url": target_post_url, "action": "like"}
+
+        brave_exe = resolve_brave_executable()
+        if not brave_exe and not await self.is_cdp_available():
+            return {"status": "failed", "url": target_post_url, "reason": "Brave not available"}
+
+        async with async_playwright() as p:
+            browser, context, is_owned_context = await self._get_browser_context(p)
+            try:
+                page = await context.new_page()
+                try:
+                    await page.goto(target_post_url, wait_until="domcontentloaded", timeout=30000)
+                    await asyncio.sleep(2.0)
+                    like_btn = page.locator('[data-testid="like"]').first
+                    if await like_btn.count() > 0:
+                        await like_btn.click()
+                        await asyncio.sleep(1.0)
+                        return {"status": "liked", "url": target_post_url}
+                    return {"status": "already_liked_or_missing", "url": target_post_url}
+                finally:
+                    with contextlib.suppress(Exception):
+                        await page.close()
+            finally:
+                if is_owned_context:
+                    with contextlib.suppress(Exception):
+                        await context.close()
+                elif browser:
+                    with contextlib.suppress(Exception):
+                        await browser.close()
+
     async def fetch_tweet_details(self, tweet_url: str) -> dict[str, Any]:
         """Fetch author and text of a tweet via Brave."""
         if not await self.is_cdp_available() and not resolve_brave_executable():

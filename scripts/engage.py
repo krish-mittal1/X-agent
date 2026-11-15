@@ -95,6 +95,19 @@ async def run_engagement(
             print(f"[+] Found candidate from @{target_author}: {target_url}")
             print(f"    Text: {target_text[:120]}...\n")
 
+        # Like action shortcut
+        if action == "like":
+            if not target_url:
+                print("Error: --tweet URL is required for like action.")
+                return
+            print(f"[*] Liking {target_url} via Brave CDP (live={live})...")
+            if not live:
+                print("[DRY RUN] Would execute like via Brave CDP.")
+                return
+            res = await service.like(target_url)
+            print(json.dumps(res, indent=2))
+            return
+
         # Retweet action shortcut
         if action == "retweet":
             if not target_url:
@@ -137,11 +150,13 @@ async def run_engagement(
         bangers = await service.generate_bangers(target_text, target_author=target_author)
 
         print("\n" + "=" * 60)
-        print("⚡ GENERATED BANGER OPTIONS FOR @ssh_bugs")
+        print("⚡ GENERATED ALL-ROUNDER BANGER OPTIONS FOR @ssh_bugs")
         print("=" * 60)
         print(f"1. [SARCASTIC]  : {bangers.get('sarcastic')}")
-        print(f"2. [VALUE-ADD]  : {bangers.get('value_add')}")
-        print(f"3. [QUOTE-TWEET]: {bangers.get('quote_tweet')}")
+        print(f"2. [RAGE_BAIT]  : {bangers.get('rage_bait')}")
+        print(f"3. [BAKCHODI]   : {bangers.get('bakchodi')}")
+        print(f"4. [QUOTE-TWEET]: {bangers.get('quote_tweet')}")
+        print(f"5. [VALUE-ADD]  : {bangers.get('value_add')}")
         print("=" * 60 + "\n")
 
         chosen_content = bangers.get(style, bangers.get("sarcastic", ""))
@@ -188,13 +203,13 @@ def main() -> None:
     )
     parser.add_argument(
         "--action",
-        choices=["reply", "quote", "retweet"],
+        choices=["reply", "quote", "retweet", "like"],
         default="reply",
-        help="Engagement action type (reply, quote, or retweet)",
+        help="Engagement action type (reply, quote, retweet, or like)",
     )
     parser.add_argument(
         "--style",
-        choices=["sarcastic", "value_add", "quote_tweet"],
+        choices=["sarcastic", "rage_bait", "bakchodi", "quote_tweet", "value_add"],
         default="sarcastic",
         help="Commentary style",
     )

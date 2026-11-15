@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
@@ -371,8 +372,13 @@ async def outbound_engagement(context: JobContext) -> dict[str, Any]:
     )
 
     target_handles = list(context.settings.growth_follow_handles) or [
+        "gharkekalesh",
+        "sagarcasm",
+        "GabbbarSingh",
         "IndianTechGuide",
         "NewsAlgebraIND",
+        "memenist",
+        "peakbengaluru",
         "ANI",
     ]
 
@@ -406,13 +412,25 @@ async def outbound_engagement(context: JobContext) -> dict[str, Any]:
     target_text = chosen["text"]
     target_author = chosen["author"]
 
+    # First, naturally like the tweet (authentic human touch)
+    with contextlib.suppress(Exception):
+        await service.like(target_url)
+
     bangers = await service.generate_bangers(target_text, target_author=target_author)
 
-    # Alternate between quote-tweet and sarcastic reply based on text length and hour
+    # Alternate between quote-tweet, sarcastic reply, rage_bait, and bakchodi
     now_hour = datetime.now(UTC).hour
     action: Literal["reply", "quote"] = "quote" if (now_hour % 2 == 0) else "reply"
-    style = "quote_tweet" if action == "quote" else "sarcastic"
-    chosen_content = bangers.get(style) or bangers.get("sarcastic") or bangers.get("value_add", "")
+
+    if action == "quote":
+        style = "quote_tweet"
+        chosen_content = bangers.get("quote_tweet") or bangers.get("sarcastic", "")
+    else:
+        styles_pool = ["sarcastic", "rage_bait", "bakchodi"]
+        style = styles_pool[(now_hour // 2) % len(styles_pool)]
+        chosen_content = (
+            bangers.get(style) or bangers.get("sarcastic") or bangers.get("value_add", "")
+        )
 
     if not chosen_content:
         return {"status": "skipped", "reason": "failed to generate banger content"}

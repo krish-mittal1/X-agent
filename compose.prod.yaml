@@ -80,6 +80,7 @@ services:
       MIN_HOURS_BETWEEN_POSTS: ${MIN_HOURS_BETWEEN_POSTS:-3.5}
       MAX_POSTS_PER_RUN: ${MAX_POSTS_PER_RUN:-1}
       MAX_CANDIDATES_PER_RUN: ${MAX_CANDIDATES_PER_RUN:-5}
+      GROWTH_FOLLOW_TARGETS: ${GROWTH_FOLLOW_TARGETS:-gharkekalesh,sagarcasm,GabbbarSingh,IndianTechGuide,NewsAlgebraIND,memenist,peakbengaluru,ANI}
     ports:
       # Loopback only, non-default host port: nothing is exposed to the
       # internet, and a neighbour already holding 8000 does not break startup.
