@@ -229,11 +229,14 @@ async def check_database(
     report.add("database", True, "reachable")
 
     now = datetime.now(UTC)
-    if last_post is None:
-        if outbound:
-            report.add("post-freshness", False, "no post has ever been recorded while live")
-        else:
-            report.add("post-freshness", True, "no post recorded yet (dry run, expected)")
+    if not outbound:
+        report.add(
+            "post-freshness",
+            True,
+            "not evaluated while external publishing is disabled",
+        )
+    elif last_post is None:
+        report.add("post-freshness", False, "no post has ever been recorded while live")
     else:
         age_hours = (now - last_post).total_seconds() / 3600
         report.add(
@@ -260,7 +263,9 @@ async def check_database(
         report.add("cookie-session", True, "no auth-shaped publish failure recorded")
 
     grace_minutes = max(15, settings.ingest_interval_minutes)
-    if last_job is None:
+    if not settings.scheduler_enabled:
+        report.add("scheduler", True, "disabled by configuration")
+    elif last_job is None:
         report.add(
             "scheduler",
             False,
