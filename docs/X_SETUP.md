@@ -65,6 +65,10 @@ the account that owns the access token, or you will publish from the wrong ident
 PUBLISHING_ENABLED=false
 DRY_RUN=true
 SCHEDULER_ENABLED=false
+X_PUBLISHING_MODE=local_draft
+OUTBOUND_ENGAGEMENT_ENABLED=false
+ENABLE_REPLY_SCANNER=false
+AI_REPLY_PUBLISHING_ENABLED=false
 ```
 
 `DRY_RUN=true` means the full policy gate runs and the outcome is logged and stored,

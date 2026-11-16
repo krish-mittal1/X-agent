@@ -8,22 +8,22 @@
 # ceilings so a Chromium or embedding spike cannot starve the neighbours.
 name: techx-agent
 
-# Pinned production intent, shared by every service that reads settings.
-#
-# These are deliberately NOT ${VAR:-default}: Compose interpolates from the same
-# .env, so a copied dev file (DRY_RUN=true, PUBLISHING_ENABLED=false,
-# X_PUBLISHING_MODE=local_draft) would silently turn the deployment into a
-# no-op. Literal values in `environment` win over `env_file`.
+# Shared production settings. Outbound actions default to a safe staging state;
+# the operator must enable each capability explicitly in the server's .env.
 x-prod-flags: &prod-flags
   APP_ENV: production
-  SCHEDULER_ENABLED: "true"
-  DRAFTING_ENABLED: "true"
-  DISCOVERY_ENABLED: "true"
-  PUBLISHING_ENABLED: "true"
-  DRY_RUN: "false"
+  SCHEDULER_ENABLED: ${SCHEDULER_ENABLED:-false}
+  DRAFTING_ENABLED: ${DRAFTING_ENABLED:-true}
+  DISCOVERY_ENABLED: ${DISCOVERY_ENABLED:-true}
+  PUBLISHING_ENABLED: ${PUBLISHING_ENABLED:-false}
+  DRY_RUN: ${DRY_RUN:-true}
   X_API_ENABLED: "false"
-  # Headless browser publish (only live path that works with this account).
-  X_PUBLISHING_MODE: brave_cdp
+  X_PUBLISHING_MODE: ${X_PUBLISHING_MODE:-local_draft}
+  X_READS_ENABLED: ${X_READS_ENABLED:-false}
+  X_RESEARCH_ENABLED: ${X_RESEARCH_ENABLED:-false}
+  ENABLE_REPLY_SCANNER: ${ENABLE_REPLY_SCANNER:-false}
+  AI_REPLY_APPROVAL_OBTAINED: ${AI_REPLY_APPROVAL_OBTAINED:-false}
+  AI_REPLY_PUBLISHING_ENABLED: ${AI_REPLY_PUBLISHING_ENABLED:-false}
   # Container networking overrides any localhost URL in .env.
   DATABASE_URL: postgresql+asyncpg://techx:${POSTGRES_PASSWORD:-techx}@db:5432/techx
 
@@ -74,7 +74,9 @@ services:
       DRAFT_INTERVAL_MINUTES: ${DRAFT_INTERVAL_MINUTES:-240}
       PUBLISH_INTERVAL_MINUTES: ${PUBLISH_INTERVAL_MINUTES:-60}
       OUTBOUND_ENGAGEMENT_INTERVAL_MINUTES: ${OUTBOUND_ENGAGEMENT_INTERVAL_MINUTES:-240}
-      OUTBOUND_ENGAGEMENT_ENABLED: "true"
+      OUTBOUND_ENGAGEMENT_ENABLED: ${OUTBOUND_ENGAGEMENT_ENABLED:-false}
+      OUTBOUND_MIN_IMPRESSIONS: ${OUTBOUND_MIN_IMPRESSIONS:-1000000}
+      ANALYTICS_ENABLED: ${ANALYTICS_ENABLED:-false}
       MAX_ORIGINAL_POSTS_PER_DAY: ${MAX_ORIGINAL_POSTS_PER_DAY:-3}
       MAX_REPLIES_PER_DAY: ${MAX_REPLIES_PER_DAY:-5}
       MIN_HOURS_BETWEEN_POSTS: ${MIN_HOURS_BETWEEN_POSTS:-3.5}
