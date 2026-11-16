@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agent.image_relevance import assess_image_attachment
 from app.agent.persona import load_persona
 from app.agent.reply_drafter import ReplyDrafter
 from app.api.deps import AdminAuth, DbSession, SettingsDep
@@ -42,6 +43,7 @@ from app.memory.database import get_session_factory
 from app.memory.embeddings import build_embedding_provider
 from app.memory.models import (
     DRAFT_APPROVED,
+    DRAFT_NEEDS_REVIEW,
     DRAFT_PUBLISHED,
     DRAFT_READY,
     Draft,
@@ -515,6 +517,16 @@ async def edit_draft(
         raise HTTPException(status_code=404, detail="draft not found")
 
     draft.body = payload.body.strip()
+    draft.status = DRAFT_NEEDS_REVIEW
+    verification = dict(draft.verification_report or {})
+    verification.update(
+        {
+            "passed": False,
+            "content_changed_after_verification": True,
+            "manual_review_required": True,
+        }
+    )
+    draft.verification_report = verification
     policy = dict(draft.policy_report or {})
     if payload.image_url is not None:
         if payload.image_url.strip():
@@ -589,6 +601,16 @@ async def refine_draft(
                 refined = refined[:277].rstrip() + "..."
 
         draft.body = refined
+        draft.status = DRAFT_NEEDS_REVIEW
+        verification = dict(draft.verification_report or {})
+        verification.update(
+            {
+                "passed": False,
+                "content_changed_after_verification": True,
+                "manual_review_required": True,
+            }
+        )
+        draft.verification_report = verification
         await db.commit()
 
         return {
@@ -757,14 +779,16 @@ async def publish_draft_now(
         draft = await session.get(Draft, draft_id)
         if draft is not None:
             v = dict(draft.verification_report or {})
-            v["passed"] = True
-            v.setdefault("unverified_facts", 0)
+            if not v.get("passed"):
+                raise HTTPException(
+                    status_code=409,
+                    detail="draft must pass claim verification after its latest edit before publishing",
+                )
             v["operator_approved"] = True
             draft.verification_report = v
             
             p = dict(draft.policy_report or {})
             p["operator_approved"] = True
-            p["duplicate"] = {"duplicate": False, "method": "operator_approval"}
             draft.policy_report = p
             draft.status = DRAFT_READY
             draft.error = None
@@ -942,13 +966,28 @@ async def command_draft(
             "duplicate": {"duplicate": False, "method": "operator_command"},
         }
         if cmd_image_url:
-            cmd_policy["image_url"] = cmd_image_url
+            image_decision = assess_image_attachment(
+                image_url=cmd_image_url,
+                source_url=doc.url if doc else None,
+                topic=query,
+                source_title=doc.title if doc else "",
+            )
+            if image_decision.attach:
+                cmd_policy.update(
+                    {
+                        "image_url": image_decision.image_url,
+                        "image_source_url": image_decision.source_url,
+                        "image_relevant": image_decision.relevant,
+                        "image_verified": image_decision.verified,
+                        "image_reason": image_decision.reason,
+                    }
+                )
 
         draft = await DraftRepository.create(
             db,
             account_id=account.id,
             kind="original",
-            status=DRAFT_READY,
+            status=DRAFT_NEEDS_REVIEW,
             idempotency_key=key,
             topic=query[:500],
             title=query[:500],
@@ -958,7 +997,13 @@ async def command_draft(
             rationale=rationale,
             source_document_ids=[doc.id] if doc else [],
             candidate_score=0.9,
-            verification_report={"passed": True, "claims": [], "unverified_facts": 0, "operator_command": True},
+            verification_report={
+                "passed": False,
+                "claims": [],
+                "unverified_facts": 0,
+                "operator_command": True,
+                "manual_review_required": True,
+            },
             policy_report=cmd_policy,
         )
         await db.commit()
@@ -1305,14 +1350,29 @@ async def deep_research_draft(
             "duplicate": {"duplicate": False, "method": "deep_research"},
         }
         if selected_image_url:
-            research_policy["image_url"] = selected_image_url
+            image_decision = assess_image_attachment(
+                image_url=selected_image_url,
+                source_url=selected_url or (doc.url if doc else None),
+                topic=selected_title or query,
+                source_title=selected_title,
+            )
+            if image_decision.attach:
+                research_policy.update(
+                    {
+                        "image_url": image_decision.image_url,
+                        "image_source_url": image_decision.source_url,
+                        "image_relevant": image_decision.relevant,
+                        "image_verified": image_decision.verified,
+                        "image_reason": image_decision.reason,
+                    }
+                )
 
         key = f"research:{account.id}:{content_hash(query + selected_title)[:12]}:{int(datetime.now(UTC).timestamp())}"
         draft = await DraftRepository.create(
             db,
             account_id=account.id,
             kind="original",
-            status=DRAFT_READY,
+            status=DRAFT_NEEDS_REVIEW,
             idempotency_key=key,
             topic=query[:500],
             title=(selected_title or query)[:500],
@@ -1322,7 +1382,13 @@ async def deep_research_draft(
             rationale=rationale,
             source_document_ids=[doc.id] if doc else [],
             candidate_score=0.9,
-            verification_report={"passed": True, "claims": [], "unverified_facts": 0, "deep_research": True},
+            verification_report={
+                "passed": False,
+                "claims": [],
+                "unverified_facts": 0,
+                "deep_research": True,
+                "manual_review_required": True,
+            },
             policy_report=research_policy,
         )
         await db.commit()

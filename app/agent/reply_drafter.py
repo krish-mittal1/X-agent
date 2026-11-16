@@ -18,7 +18,6 @@ from app.memory.embeddings import EmbeddingProvider
 from app.memory.models import (
     DRAFT_BLOCKED,
     DRAFT_NEEDS_REVIEW,
-    DRAFT_READY,
     ConversationThread,
     Draft,
     Interaction,
@@ -357,7 +356,7 @@ class ReplyDrafter:
                     session,
                     account_id=account_id,
                     kind="reply",
-                    status=DRAFT_READY,
+                    status=DRAFT_NEEDS_REVIEW,
                     idempotency_key=key,
                     topic=f"Reply to {('@' + target_handle) if target_handle else 'post'}: {clean_text[:60]}",
                     body=text_content,
@@ -366,7 +365,13 @@ class ReplyDrafter:
                     rationale=desc,
                     in_reply_to_post_id=target_post_id,
                     target_author_handle=target_handle,
-                    verification_report={"passed": True, "claims": [], "unverified_facts": 0, "manual_workflow": True},
+                    verification_report={
+                        "passed": False,
+                        "claims": [],
+                        "unverified_facts": 0,
+                        "manual_workflow": True,
+                        "manual_review_required": True,
+                    },
                     policy_report={
                         "manual_reply_workflow": True,
                         "format": format_tag,

@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.config import Settings
 from app.logging_config import get_logger
-from app.memory.models import DRAFT_READY, Draft
+from app.memory.models import DRAFT_APPROVED, DRAFT_NEEDS_REVIEW, Draft
 from app.memory.repositories import DraftRepository
 from app.providers.base import LLMMessage
 from app.providers.factory import LLMService
@@ -28,6 +28,28 @@ from app.publishing.brave_cdp import BraveCDPPublisher
 from app.schemas.publishing import PublishResult
 
 logger = get_logger(__name__)
+
+
+def rank_viral_candidates(
+    candidates: list[dict[str, Any]], minimum_impressions: int
+) -> list[dict[str, Any]]:
+    """Keep candidates with observed public reach and rank strongest first."""
+    eligible = [
+        candidate
+        for candidate in candidates
+        if int(candidate.get("impressions") or 0) >= minimum_impressions
+        and candidate.get("tweet_id")
+        and candidate.get("text")
+    ]
+    return sorted(
+        eligible,
+        key=lambda candidate: (
+            int(candidate.get("impressions") or 0),
+            int(candidate.get("likes") or 0),
+            int(candidate.get("replies") or 0),
+        ),
+        reverse=True,
+    )
 
 
 @dataclass(frozen=True)
@@ -88,28 +110,28 @@ class EngagementService:
         target_author: str = "",
         context: str = "",
     ) -> dict[str, str]:
-        """Generate all-rounder viral takes: sarcastic, rage_bait, bakchodi, quote_tweet, value_add."""
+        """Generate varied, concise responses without inventing facts or imitating accounts."""
         clean_text = target_text.strip()
         if not clean_text:
             raise ValueError("target_text cannot be empty")
 
         system_prompt = (
-            "You are @ssh_bugs on X, an all-rounder Indian internet voice (mix of @sagarcasm, @GabbbarSingh, and @peakbengaluru).\n"
-            "You are looking at a viral tweet and drafting distinct, scroll-stopping responses for maximum reach and debate.\n\n"
+            "You are @ssh_bugs on X, an original Indian internet voice.\n"
+            "Draft distinct, useful responses to a viral post. Never imitate another named account.\n\n"
             "YOUR VOICE & IDENTITY:\n"
             "- Ultra-relatable, sharp, conversational, desi internet native.\n"
-            "- You do bakchodi, sarcastic burns, rage-baiting takes that provoke arguments, and funny 1-line quote captions.\n"
+            "- You can be dry, funny, direct, or analytical, but never invent facts or provoke abuse.\n"
             "- ZERO AI FLUFF: Never say 'delve', 'testament to', 'game changer', 'it remains to be seen', 'in my opinion'.\n"
             "- ZERO HASHTAGS: Never include hashtags or robotic emojis.\n\n"
             "THE 5 REQUIRED ALL-ROUNDER STYLES:\n"
             "1. SARCASTIC (Max 180 chars): Witty, dry reality-check cutting through the PR or hypocrisy with conversational irony.\n"
-            "2. RAGE_BAIT (Max 200 chars): A spicy, controversial unpopular opinion that forces people to comment and argue.\n"
+            "2. STRONG_TAKE (Max 200 chars): A clear opinion grounded only in the supplied post and context.\n"
             "3. BAKCHODI (Max 180 chars): Pure desi group-chat humor, relatable adulting/office/life observation, deadpan punchline.\n"
             "4. QUOTE_TWEET (Max 180 chars): A killer 1-line headline caption to place on top of the quoted tweet (like 'Bro thought he was...').\n"
             "5. VALUE_ADD (Max 220 chars): The unspoken financial reality, hidden cost, or hard metrics.\n\n"
             "OUTPUT FORMAT (Strict):\n"
             "SARCASTIC: <text under 180 chars>\n"
-            "RAGE_BAIT: <text under 200 chars>\n"
+            "STRONG_TAKE: <text under 200 chars>\n"
             "BAKCHODI: <text under 180 chars>\n"
             "QUOTE_TWEET: <text under 180 chars>\n"
             "VALUE_ADD: <text under 220 chars>"
@@ -145,8 +167,8 @@ class EngagementService:
             line_str = line.strip()
             if line_str.upper().startswith("SARCASTIC:"):
                 parsed["sarcastic"] = line_str[10:].strip().strip('"').strip("'")
-            elif line_str.upper().startswith("RAGE_BAIT:"):
-                parsed["rage_bait"] = line_str[10:].strip().strip('"').strip("'")
+            elif line_str.upper().startswith("STRONG_TAKE:"):
+                parsed["rage_bait"] = line_str[12:].strip().strip('"').strip("'")
             elif line_str.upper().startswith("BAKCHODI:"):
                 parsed["bakchodi"] = line_str[9:].strip().strip('"').strip("'")
             elif line_str.upper().startswith("QUOTE_TWEET:"):
@@ -180,6 +202,7 @@ class EngagementService:
         *,
         action: Literal["reply", "quote"] = "reply",
         style: str = "sarcastic",
+        operator_approved: bool = False,
     ) -> Draft:
         """Create and persist a draft for a reply or quote-tweet."""
         author, post_id = extract_tweet_metadata(target_post_url)
@@ -202,7 +225,7 @@ class EngagementService:
                 session,
                 account_id=account_id,
                 kind="reply" if action == "reply" else "original",
-                status=DRAFT_READY,
+                status=DRAFT_APPROVED if operator_approved else DRAFT_NEEDS_REVIEW,
                 idempotency_key=key,
                 topic=f"Engagement on @{author}: {post_id}",
                 title=f"Engagement on @{author}",
@@ -213,6 +236,11 @@ class EngagementService:
                 source_document_ids=[],
                 in_reply_to_post_id=post_id if action == "reply" else None,
                 target_author_handle=author if author else None,
+                verification_report={
+                    "passed": False,
+                    "unverified_facts": 0,
+                    "manual_review_required": True,
+                },
                 policy_report=policy_report,
             )
             await session.commit()
@@ -231,6 +259,12 @@ class EngagementService:
                 target_draft = loaded
 
         parts = [target_draft.body]
+        if target_draft.status != DRAFT_APPROVED:
+            return PublishResult(
+                status="blocked",
+                draft_id=target_draft.id,
+                reasons=["engagement draft requires explicit operator approval"],
+            )
         return await self.publisher.publish(target_draft, parts)
 
     async def repost(self, target_post_url: str) -> dict[str, Any]:
@@ -252,4 +286,4 @@ class EngagementService:
                 continue
             tweets = await self.publisher.scan_profile_tweets(clean, limit=limit_per_handle)
             candidates.extend(tweets)
-        return candidates
+        return rank_viral_candidates(candidates, self.settings.outbound_min_impressions)

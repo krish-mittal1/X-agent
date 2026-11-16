@@ -6,7 +6,11 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from app.config import Settings
-from app.growth.engagement import EngagementService, extract_tweet_metadata
+from app.growth.engagement import (
+    EngagementService,
+    extract_tweet_metadata,
+    rank_viral_candidates,
+)
 from app.providers.base import LLMResponse, LLMUsage
 from app.publishing.brave_cdp import BraveCDPPublisher
 
@@ -43,6 +47,20 @@ def test_extract_tweet_metadata() -> None:
     author3, tweet_id3 = extract_tweet_metadata("invalid_url")
     assert author3 == ""
     assert tweet_id3 == ""
+
+
+def test_viral_candidates_require_observed_threshold_and_are_ranked() -> None:
+    ranked = rank_viral_candidates(
+        [
+            {"tweet_id": "1", "text": "small", "impressions": 999_999},
+            {"tweet_id": "2", "text": "viral", "impressions": 1_500_000, "likes": 50},
+            {"tweet_id": "3", "text": "bigger", "impressions": 2_000_000, "likes": 10},
+            {"tweet_id": "4", "text": "unknown"},
+        ],
+        1_000_000,
+    )
+
+    assert [candidate["tweet_id"] for candidate in ranked] == ["3", "2"]
 
 
 @pytest.mark.asyncio
@@ -127,3 +145,4 @@ async def test_create_engagement_draft_stores_quoted_post_url() -> None:
     assert draft.policy_report.get("quoted_post_url") == target_url
     assert draft.policy_report.get("target_author") == "IndianTechGuide"
     assert draft.policy_report.get("target_post_id") == "1885544332211"
+    assert draft.status == "needs_review"

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
@@ -412,25 +411,10 @@ async def outbound_engagement(context: JobContext) -> dict[str, Any]:
     target_text = chosen["text"]
     target_author = chosen["author"]
 
-    # First, naturally like the tweet (authentic human touch)
-    with contextlib.suppress(Exception):
-        await service.like(target_url)
-
     bangers = await service.generate_bangers(target_text, target_author=target_author)
-
-    # Alternate between quote-tweet, sarcastic reply, rage_bait, and bakchodi
-    now_hour = datetime.now(UTC).hour
-    action: Literal["reply", "quote"] = "quote" if (now_hour % 2 == 0) else "reply"
-
-    if action == "quote":
-        style = "quote_tweet"
-        chosen_content = bangers.get("quote_tweet") or bangers.get("sarcastic", "")
-    else:
-        styles_pool = ["sarcastic", "rage_bait", "bakchodi"]
-        style = styles_pool[(now_hour // 2) % len(styles_pool)]
-        chosen_content = (
-            bangers.get(style) or bangers.get("sarcastic") or bangers.get("value_add", "")
-        )
+    action: Literal["reply", "quote"] = "reply"
+    style = "value_add"
+    chosen_content = bangers.get("value_add") or bangers.get("sarcastic", "")
 
     if not chosen_content:
         return {"status": "skipped", "reason": "failed to generate banger content"}
@@ -443,18 +427,17 @@ async def outbound_engagement(context: JobContext) -> dict[str, Any]:
         style=style,
     )
 
-    res = await service.publish_engagement(draft)
     logger.info(
-        "Autonomous outbound engagement dispatched",
-        extra={"extra_fields": {"target_url": target_url, "action": action, "status": res.status}},
+        "Outbound engagement draft queued for review",
+        extra={"extra_fields": {"target_url": target_url, "action": action, "draft_id": draft.id}},
     )
     return {
-        "status": res.status,
+        "status": "needs_review",
         "action": action,
         "target_url": target_url,
         "author": target_author,
         "content": chosen_content,
-        "post_ids": res.post_ids,
+        "draft_id": draft.id,
     }
 
 

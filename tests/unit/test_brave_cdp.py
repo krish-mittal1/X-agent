@@ -8,7 +8,11 @@ import pytest
 
 from app.config import Settings
 from app.memory.models import Draft
-from app.publishing.brave_cdp import BraveCDPPublisher
+from app.publishing.brave_cdp import (
+    BraveCDPPublisher,
+    metrics_from_aria_labels,
+    parse_visible_count,
+)
 from app.publishing.provider import get_publishing_provider
 
 
@@ -77,7 +81,21 @@ async def test_brave_cdp_validate_connection_succeeds_with_tokens() -> None:
     provider = BraveCDPPublisher(settings, mock_factory)
     val = await provider.validate_connection()
     assert val["valid"] is True
-    assert "ban-proof publishing active" in val["detail"]
+    assert "every post requires confirmation" in val["detail"]
+
+
+def test_x_visible_counts_and_metrics_are_parsed() -> None:
+    assert parse_visible_count("1.2M") == 1_200_000
+    assert parse_visible_count("42K") == 42_000
+    assert parse_visible_count("n/a") is None
+    assert metrics_from_aria_labels(
+        ["1.2M Views", "8,400 Likes", "315 Replies", "2K Reposts"]
+    ) == {
+        "impressions": 1_200_000,
+        "likes": 8_400,
+        "replies": 315,
+        "reposts": 2_000,
+    }
 
 
 @pytest.mark.asyncio

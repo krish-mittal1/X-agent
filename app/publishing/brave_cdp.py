@@ -1,9 +1,4 @@
-"""Brave Browser Native Automation Publishing Provider.
-
-Enables 100% automated, ₹0 cost publishing directly through the operator's
-authentic Brave browser with real TLS fingerprints, Blink engine, and Arkose
-telemetry, bypassing Error 226 without risking shadowbans or suspensions.
-"""
+"""Brave browser publishing provider with explicit outcome confirmation."""
 
 from __future__ import annotations
 
@@ -23,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.config import Settings
 from app.logging_config import get_logger
-from app.memory.models import DRAFT_PUBLISHED, Draft
+from app.memory.models import DRAFT_NEEDS_RECONCILIATION, DRAFT_PUBLISHED, Draft
 from app.memory.repositories import AuditRepository, PostRepository
 from app.publishing.provider import PublishingProvider
 from app.research.security import is_safe_url
@@ -32,6 +27,48 @@ from app.schemas.publishing import PolicyDecision, PublishResult
 logger = get_logger(__name__)
 
 DEFAULT_CDP_ENDPOINT = "http://127.0.0.1:9222"
+
+
+def parse_visible_count(value: str) -> int | None:
+    """Parse an X UI count such as ``1,234``, ``12K`` or ``1.5M``."""
+    cleaned = value.strip().replace(",", "").upper()
+    match = re.fullmatch(r"(\d+(?:\.\d+)?)\s*([KMB])?", cleaned)
+    if not match:
+        return None
+    number = float(match.group(1))
+    multiplier = {None: 1, "K": 1_000, "M": 1_000_000, "B": 1_000_000_000}[
+        match.group(2)
+    ]
+    return int(number * multiplier)
+
+
+def metrics_from_aria_labels(labels: list[str]) -> dict[str, int]:
+    """Extract public metrics from the accessible labels rendered by X."""
+    metrics: dict[str, int] = {}
+    names = {
+        "view": "impressions",
+        "like": "likes",
+        "repl": "replies",
+        "repost": "reposts",
+        "quote": "quotes",
+    }
+    for label in labels:
+        match = re.search(r"([\d,.]+(?:\.\d+)?\s*[KMB]?)\s+(views?|likes?|repl(?:y|ies)|reposts?|quotes?)\b", label, re.I)
+        if not match:
+            continue
+        count = parse_visible_count(match.group(1))
+        if count is None:
+            continue
+        lowered_name = match.group(2).lower()
+        for prefix, key in names.items():
+            if lowered_name.startswith(prefix):
+                metrics[key] = max(metrics.get(key, 0), count)
+                break
+    return metrics
+
+
+class PublishConfirmationError(RuntimeError):
+    """The click happened, but X did not expose a verifiable status ID."""
 
 KNOWN_BRAVE_PATHS = [
     r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
@@ -86,6 +123,63 @@ class BraveCDPPublisher(PublishingProvider):
         self.profile_dir = profile_dir or str(Path.cwd() / ".brave_profile")
         self.clock = clock or (lambda: datetime.now(UTC))
 
+    async def _confirm_post_id(
+        self,
+        page: Any,
+        text: str,
+        *,
+        excluded_ids: set[str] | None = None,
+        include_replies: bool = False,
+    ) -> str | None:
+        """Confirm the posted text on the account profile and return its real X ID."""
+        handle = self.settings.x_persona_handle.strip().lstrip("@")
+        if not handle:
+            return None
+        excluded = excluded_ids or set()
+        profile_url = f"https://x.com/{handle}/with_replies" if include_replies else f"https://x.com/{handle}"
+        expected = " ".join(text.split())
+        for attempt in range(3):
+            await page.goto(profile_url, wait_until="domcontentloaded", timeout=35000)
+            articles = page.locator('article[data-testid="tweet"]')
+            try:
+                await articles.first.wait_for(state="visible", timeout=10000)
+            except Exception:
+                if attempt < 2:
+                    await asyncio.sleep(2.0)
+                continue
+            for index in range(min(await articles.count(), 8)):
+                article = articles.nth(index)
+                text_node = article.locator('[data-testid="tweetText"]').first
+                if await text_node.count() == 0:
+                    continue
+                visible_text = " ".join((await text_node.inner_text()).split())
+                if visible_text != expected:
+                    continue
+                links = article.locator(f'a[href*="/{handle}/status/"]')
+                for link_index in range(await links.count()):
+                    href = await links.nth(link_index).get_attribute("href") or ""
+                    match = re.search(r"/status/(\d+)", href)
+                    if match and match.group(1) not in excluded:
+                        return match.group(1)
+            if attempt < 2:
+                await asyncio.sleep(2.0)
+        return None
+
+    async def _mark_needs_reconciliation(self, draft: Draft, reason: str) -> None:
+        async with self.session_factory() as session:
+            db_draft = await session.get(Draft, draft.id)
+            if db_draft is not None:
+                db_draft.status = DRAFT_NEEDS_RECONCILIATION
+                db_draft.error = reason[:4000]
+            await AuditRepository.log(
+                session,
+                action="publish_brave_cdp",
+                outcome="unknown",
+                account_id=draft.account_id,
+                details={"draft_id": draft.id, "reason": reason},
+            )
+            await session.commit()
+
     async def is_cdp_available(self) -> bool:
         """Check if local browser CDP port is open and responding.
 
@@ -124,7 +218,7 @@ class BraveCDPPublisher(PublishingProvider):
         return {
             "valid": True,
             "provider": "brave_cdp",
-            "detail": f"Brave native automation ready ({brave_exe}). ₹0 ban-proof publishing active.",
+            "detail": f"Brave browser publishing ready ({brave_exe}); every post requires confirmation.",
         }
 
     async def get_status(self) -> dict[str, Any]:
@@ -290,6 +384,7 @@ class BraveCDPPublisher(PublishingProvider):
 
         post_ids: list[str] = []
         now = self.clock()
+        reply_parent = draft.in_reply_to_post_id if draft.kind == "reply" else None
 
         async with async_playwright() as p:
             browser, context, is_owned_context = await self._get_browser_context(p)
@@ -313,13 +408,17 @@ class BraveCDPPublisher(PublishingProvider):
                                 img_url = draft.verification_report.get("image_url")
                             if img_url:
                                 temp_image = await self._download_temp_media(img_url)
+                                if temp_image is None:
+                                    raise RuntimeError(
+                                        "selected editorial image could not be downloaded; post held"
+                                    )
 
                         encoded_text = quote(text_content)
                         intent_url = f"https://x.com/intent/post?text={encoded_text}"
 
                         # If this is a reply draft, attach reply metadata
-                        if draft.kind == "reply" and draft.in_reply_to_post_id:
-                            intent_url += f"&in_reply_to={draft.in_reply_to_post_id}"
+                        if reply_parent:
+                            intent_url += f"&in_reply_to={reply_parent}"
 
                         # If this is a quote tweet, attach quote URL
                         quote_url = None
@@ -327,7 +426,7 @@ class BraveCDPPublisher(PublishingProvider):
                             quote_url = draft.policy_report.get("quoted_post_url")
                         if not quote_url:
                             quote_url = getattr(draft, "quoted_post_url", None)
-                        if quote_url:
+                        if quote_url and position == 0:
                             intent_url += f"&url={quote(str(quote_url))}"
 
                         logger.info(
@@ -356,23 +455,25 @@ class BraveCDPPublisher(PublishingProvider):
                                     await file_input.first.set_input_files(
                                         str(temp_image.resolve())
                                     )
-                                    try:
-                                        await page.locator(
-                                            '[data-testid="attachments"], [data-testid="mediaAttachment"]'
-                                        ).wait_for(state="visible", timeout=12000)
-                                        logger.info(
-                                            "Image attachment preview confirmed visible on X compose dialog"
-                                        )
-                                    except Exception:
-                                        await asyncio.sleep(2.5)
+                                    await page.locator(
+                                        '[data-testid="attachments"], [data-testid="mediaAttachment"]'
+                                    ).wait_for(state="visible", timeout=12000)
+                                    logger.info(
+                                        "Image attachment preview confirmed visible on X compose dialog"
+                                    )
+                                else:
+                                    raise RuntimeError(
+                                        "X compose did not expose a media file input; post held"
+                                    )
                             except Exception as img_err:
-                                logger.warning(
-                                    "Failed to attach image via file input, falling back to text-only",
-                                    extra={"extra_fields": {"error": str(img_err)}},
-                                )
+                                raise RuntimeError(
+                                    f"selected editorial image was not attached: {img_err}"
+                                ) from img_err
 
                         # Locate Tweet / Post button
-                        post_button = page.locator('[data-testid="tweetButton"]').first
+                        post_button = page.locator(
+                            '[data-testid="tweetButton"], [data-testid="tweetButtonInline"]'
+                        ).first
                         await post_button.wait_for(state="visible", timeout=15000)
 
                         # Check if disabled, wait briefly for text hydration
@@ -383,9 +484,18 @@ class BraveCDPPublisher(PublishingProvider):
                         await post_button.click()
                         await asyncio.sleep(4.0)
 
-                        # Verify button disappeared or dialog closed
-                        post_id = f"brave_{int(now.timestamp())}_{position}"
+                        post_id = await self._confirm_post_id(
+                            page,
+                            text_content,
+                            excluded_ids={*post_ids, *(filter(None, [draft.in_reply_to_post_id]))},
+                            include_replies=bool(reply_parent),
+                        )
+                        if post_id is None:
+                            raise PublishConfirmationError(
+                                "X did not expose a matching status ID after the dispatch click"
+                            )
                         post_ids.append(post_id)
+                        reply_parent = post_id
 
                         # Record in PostRepository
                         async with self.session_factory() as session:
@@ -400,6 +510,16 @@ class BraveCDPPublisher(PublishingProvider):
                             )
                             await session.commit()
 
+                    except PublishConfirmationError as exc:
+                        reason = str(exc)
+                        await self._mark_needs_reconciliation(draft, reason)
+                        return PublishResult(
+                            status="unknown",
+                            draft_id=draft.id,
+                            post_ids=post_ids,
+                            reasons=[reason],
+                            policy=decision,
+                        )
                     except Exception as exc:
                         logger.exception(
                             "Error during Brave post dispatch",
@@ -642,12 +762,16 @@ class BraveCDPPublisher(PublishingProvider):
                             match_id = re.search(r"/status/(\d+)", tweet_url)
                             tweet_id = match_id.group(1) if match_id else ""
                             if tweet_url and text:
+                                labels = await article.locator("[aria-label]").evaluate_all(
+                                    "els => els.map(el => el.getAttribute('aria-label') || '')"
+                                )
                                 tweets.append(
                                     {
                                         "url": tweet_url,
                                         "tweet_id": tweet_id,
                                         "author": clean_handle,
                                         "text": text,
+                                        **metrics_from_aria_labels(labels),
                                     }
                                 )
                         except Exception:

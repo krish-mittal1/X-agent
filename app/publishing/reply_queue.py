@@ -65,6 +65,17 @@ class ReplyQueue:
         draft.reviewed_by = reviewer[:128]
         draft.reviewed_at = datetime.now(UTC)
         draft.review_notes = (notes or "")[:2000] or None
+        verification = dict(draft.verification_report or {})
+        claims = verification.get("claims") or []
+        if not claims and int(verification.get("unverified_facts") or 0) == 0:
+            verification.update(
+                {
+                    "passed": True,
+                    "human_verified": True,
+                    "verified_by": reviewer[:128],
+                }
+            )
+            draft.verification_report = verification
         await AuditRepository.log(
             session,
             action="reply_draft_review",

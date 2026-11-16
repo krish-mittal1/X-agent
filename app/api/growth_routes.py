@@ -161,6 +161,7 @@ async def dispatch_engagement_endpoint(
             content=payload.content,
             action="quote" if payload.action == "quote" else "reply",
             style=payload.style,
+            operator_approved=True,
         )
         result = await service.publish_engagement(draft.id)
         return {
