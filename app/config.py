@@ -183,9 +183,13 @@ class Settings(BaseSettings):
     # --- persona / content mix --------------------------------------------
     # Which shapes the account posts and how often. Choose-able per run; the
     # application picks, the model never does.
+    # Balanced India Pulse mix.  Editorial format selection is operator-owned;
+    # the model cannot turn a factual story into an opinion.  Comedic formats
+    # are explicitly limited to source-grounded observations and satire.
     post_format_mix: str = (
-        "straight_news:0.30,political_news:0.18,business_economy:0.16,"
-        "explainer:0.12,geopolitics_defence:0.10,quote_led:0.08,breaking_news:0.06"
+        "straight_news:0.20,political_news:0.10,business_economy:0.10,"
+        "explainer:0.10,geopolitics_defence:0.08,quote_led:0.07,"
+        "breaking_news:0.05,hot_take:0.10,relatable:0.10,shitpost:0.10"
     )
     banned_phrases: str = (
         "as an ai language model,"

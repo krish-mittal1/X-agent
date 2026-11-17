@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -95,9 +96,38 @@ async def start_scheduler(settings: Settings) -> AsyncIOScheduler:
         "scheduler started",
         extra={"extra_fields": {"jobs": [job.id for job in scheduler.get_jobs()]}},
     )
+    # IntervalTrigger waits for the first interval before its first execution.
+    # After a restart that made a healthy agent appear idle for hours (drafting
+    # can be configured at 4h).  Seed the research/draft pipeline once at
+    # startup; the regular interval jobs remain the source of truth afterwards.
+    scheduler.startup_warmup_task = asyncio.create_task(  # type: ignore[attr-defined]
+        _startup_warmup(context, settings)
+    )
     if settings.llm_validate_model_on_startup and llm.enabled:
         asyncio.create_task(_validate_model(llm))
     return scheduler
+
+
+async def _startup_warmup(context: JobContext, settings: Settings) -> None:
+    """Run a non-publishing discovery pass after startup.
+
+    The warm-up deliberately stops before publishing.  It only ensures that
+    fresh, verified drafts exist for the normal paced publishing job; it cannot
+    bypass growth slots, policy gates, or the publishing kill switches.
+    """
+    try:
+        for name, interval in (
+            ("rss_ingestion", settings.ingest_interval_minutes * 60),
+            ("github_discovery", settings.ingest_interval_minutes * 60),
+            ("ranking", settings.rank_interval_minutes * 60),
+            ("drafting", settings.draft_interval_minutes * 60),
+        ):
+            await run_slot(name, context, TASKS[name], interval_seconds=interval)
+    except Exception as exc:  # startup must remain healthy if research is unavailable
+        logger.exception(
+            "startup warm-up failed",
+            extra={"extra_fields": {"error": str(exc)[:300]}},
+        )
 
 
 async def _validate_model(llm: LLMService) -> None:
@@ -113,6 +143,11 @@ async def _validate_model(llm: LLMService) -> None:
 
 
 async def shutdown_scheduler(scheduler: AsyncIOScheduler) -> None:
+    warmup = getattr(scheduler, "startup_warmup_task", None)
+    if warmup is not None and not warmup.done():
+        warmup.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await warmup
     scheduler.shutdown(wait=False)
     context: JobContext | None = getattr(scheduler, "job_context", None)
     if context is None:

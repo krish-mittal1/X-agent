@@ -334,11 +334,12 @@ async def growth_plan(context: JobContext) -> dict[str, Any]:
 
 
 async def outbound_engagement(context: JobContext) -> dict[str, Any]:
-    """Autonomous Outbound Viral Engagement Worker.
+    """Discover high-reach posts and queue reviewed engagement drafts.
 
-    Scans top Indian viral accounts (@IndianTechGuide, @NewsAlgebraIND, @ANI),
-    identifies unengaged breaking posts, generates sharp takes with Gemini,
-    and publishes live via Brave CDP without manual intervention.
+    Scans configured Indian accounts, identifies posts whose observed public
+    reach meets the operator threshold, and generates a reply/quote proposal.
+    It deliberately does not publish: reply sending has separate X approval,
+    inbound-context, and reviewer gates enforced by ``Publisher``.
     """
     if (
         not getattr(context.settings, "outbound_engagement_enabled", True)
