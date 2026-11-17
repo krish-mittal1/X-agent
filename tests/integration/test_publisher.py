@@ -19,12 +19,12 @@ from app.memory.models import (
 )
 from app.memory.repositories import DraftRepository, PostRepository
 from app.publishing.publisher import Publisher
-from app.schemas.publishing import PublishResult
 from app.publishing.x_client import (
     AmbiguousPublishError,
     XPost,
     XRateLimitedError,
 )
+from app.schemas.publishing import PublishResult
 
 BODY = (
     "The new scheduler batches requests and the paged KV cache cuts fragmentation. "
