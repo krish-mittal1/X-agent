@@ -43,10 +43,16 @@ def create_app(settings: Settings | None = None, *, start_scheduler: bool | None
                                     "zero_cost_mode": resolved.is_zero_cost_mode,
                                     "publishing_mode": resolved.x_publishing_mode}},
         )
-        if resolved.is_zero_cost_mode:
+        if resolved.x_publishing_mode == "local_draft":
             logger.info(
                 "[OPERATOR_DISPATCH_MODE] Running in local draft queue mode. "
                 "Outbound external API dispatch is disabled; content staged locally.",
+                extra={"extra_fields": {"publishing_mode": resolved.x_publishing_mode}},
+            )
+        elif resolved.x_publishing_mode == "brave_cdp":
+            logger.info(
+                "[OPERATOR_DISPATCH_MODE] Running in Brave browser dispatch mode. "
+                "Outbound posting is enabled only when publishing gates and pacing allow it.",
                 extra={"extra_fields": {"publishing_mode": resolved.x_publishing_mode}},
             )
         should_start = resolved.scheduler_enabled if start_scheduler is None else start_scheduler
