@@ -302,9 +302,6 @@ class ContentWriter:
 
         champion = selection_result.champion
         alternatives = selection_result.alternatives
-        # The newsroom classifier is authoritative for the selected candidate.
-        # The earlier format choice only sets the desired mix before generation.
-        validation_format = champion.news_format or validation_format
 
         # -------------------------------------------------------------------
         # 4. Independent Claim Verification on Candidates (Stage 5)

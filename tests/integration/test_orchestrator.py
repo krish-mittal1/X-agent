@@ -19,8 +19,7 @@ from app.schemas.research import IngestedItem
 
 SOURCE_TEXT = "Benchmarks report 1,200 tokens per second on a single CPU core with the new scheduler."
 BODY = (
-    "A paged KV cache plus batching is the practical combination for local coding agents: "
-    "the reported 1,200 tok/s on one CPU core is the number to watch. "
+    "Benchmarks report 1,200 tokens per second on a single CPU core with the new scheduler. "
     "https://github.com/acme/widget/releases/tag/v2"
 )
 
@@ -59,9 +58,9 @@ class FakeLLMService:
             rationale="Concrete throughput result with a deployment trade-off.",
             claims=[
                 DraftClaim(
-                    claim="The new scheduler reaches 1,200 tokens per second on one CPU core.",
+                    claim="Benchmarks report 1,200 tokens per second on a single CPU core with the new scheduler.",
                     claim_type="fact",
-                    supporting_quote="1,200 tokens per second on a single CPU core",
+                    supporting_quote=SOURCE_TEXT,
                     source_url="https://github.com/acme/widget/releases/tag/v2",
                 )
             ],

@@ -109,7 +109,7 @@ async def test_verified_draft_is_ready_and_persisted(settings, engine, account) 
         memory_count = (await session.scalars(select(MemoryRecord))).all()
     assert draft is not None
     assert draft.status == "ready"
-    assert draft.body.startswith("The new scheduler")
+    assert draft.body.startswith("The release adds a paged KV cache")
     assert draft.source_document_ids == [source_id]
     assert draft.verification_report["passed"] is True
     assert len(claims) == 2 and {claim.status for claim in claims} == {"verified"}
@@ -153,6 +153,29 @@ async def test_quantitative_post_without_claims_is_blocked(settings, engine, acc
     )
     assert outcome.status == "blocked"
     assert any("quantitative claims" in reason for reason in outcome.blocked_reasons)
+
+
+async def test_unlisted_factual_sentence_is_blocked(settings, engine, account) -> None:
+    factual_only = settings.model_copy(update={"post_format_mix": "explainer:1"})
+    source_id = await create_source(settings, account.id)
+    supported = DraftClaim(
+        claim="The release adds a paged KV cache and a batching scheduler.",
+        claim_type="fact",
+        supporting_quote="The release adds a paged KV cache and a batching scheduler.",
+        source_url="https://github.com/acme/widget/releases/tag/v2",
+    )
+    content = draft_content(
+        claims=[supported],
+        parts=[
+            "The release adds a paged KV cache and a batching scheduler. "
+            "The changes signal a major shift in the local AI market."
+        ],
+    )
+    outcome = await make_writer(factual_only, FakeLLM(content)).create_original_draft(
+        account.id, [source_id]
+    )
+    assert outcome.status == "blocked"
+    assert any("not covered by declared evidence" in reason for reason in outcome.blocked_reasons)
 
 
 async def test_number_in_a_shitpost_is_allowed(settings, engine, account) -> None:

@@ -102,54 +102,70 @@ async def seeded_candidate(db: AsyncSession, account: Account) -> SourceDocument
 
 
 def build_mock_multi_angle() -> MultiAngleGenerationResponse:
-    quote = "The ₹91,000 crore facility is being built in partnership with Taiwan's Powerchip Semiconductor Manufacturing Corp (PSMC)."
+    clearance_quote = (
+        "Tata Electronics has received final environmental and regulatory clearances "
+        "for its mega semiconductor fabrication plant in Dholera, Gujarat."
+    )
+    partnership_quote = (
+        "The ₹91,000 crore facility is being built in partnership with Taiwan's "
+        "Powerchip Semiconductor Manufacturing Corp (PSMC)."
+    )
+    production_quote = "Commercial production of 28nm chips is slated for late 2026."
+    source_url = "https://indianexpress.com/article/business/tata-electronics-dholera-semiconductor-plant"
     return MultiAngleGenerationResponse(
         topic="Tata Electronics Dholera Fab",
         analytical=SingleAngleCandidate(
             angle="analytical",
-            hook="Tata's ₹91,000 cr Dholera fab just crossed the biggest hurdle: environmental and state water clearance.",
             parts=[
-                "Tata's ₹91,000 cr Dholera fab just crossed the biggest hurdle: environmental and state water clearance. With PSMC supplying 28nm process nodes, India's first commercial silicon fab now enters active civil construction."
+                f"{clearance_quote} {partnership_quote}"
             ],
-            rationale="Focus on unit economics and regulatory clearance significance.",
+            rationale="Straight factual report of the clearances and project partnership.",
             claims=[
                 DraftClaim(
-                    claim="The ₹91,000 crore facility is being built with Taiwan's PSMC.",
+                    claim=clearance_quote,
                     claim_type="fact",
-                    supporting_quote=quote,
-                    source_url="https://indianexpress.com/article/business/tata-electronics-dholera-semiconductor-plant",
-                )
+                    supporting_quote=clearance_quote,
+                    source_url=source_url,
+                ),
+                DraftClaim(
+                    claim=partnership_quote,
+                    claim_type="fact",
+                    supporting_quote=partnership_quote,
+                    source_url=source_url,
+                ),
             ],
         ),
         contrarian=SingleAngleCandidate(
             angle="contrarian",
-            hook="Clearances are the easy part; the real battlefield for Dholera is reliable ultra-pure water.",
             parts=[
-                "Clearances are the easy part; the real battlefield for Dholera is reliable ultra-pure water. While headlines celebrate the ₹91,000 cr sanction, semiconductor fabs consume 20M liters daily in an arid region."
+                f"{partnership_quote} {production_quote}"
             ],
-            rationale="Exposing infrastructure supply chain bottlenecks.",
+            rationale="Reports the partner and stated production timeline without inference.",
             claims=[
                 DraftClaim(
-                    claim="The ₹91,000 crore facility is being built with Taiwan's PSMC.",
+                    claim=partnership_quote,
                     claim_type="fact",
-                    supporting_quote=quote,
-                    source_url="https://indianexpress.com/article/business/tata-electronics-dholera-semiconductor-plant",
-                )
+                    supporting_quote=partnership_quote,
+                    source_url=source_url,
+                ),
+                DraftClaim(
+                    claim=production_quote,
+                    claim_type="fact",
+                    supporting_quote=production_quote,
+                    source_url=source_url,
+                ),
             ],
         ),
         witty=SingleAngleCandidate(
             angle="witty",
-            hook="India's semiconductor dream just moved from Powerpoint decks to actual bulldozers.",
-            parts=[
-                "India's semiconductor dream just moved from Powerpoint decks to actual bulldozers. Tata secured green approval for the ₹91,000 cr Dholera plant. Now we find out if Gujarat's power grid can handle 28nm silicon without blinking."
-            ],
-            rationale="Witty commentary on the transition from policy hype to real engineering.",
+            parts=[clearance_quote],
+            rationale="Uses a concise verified clearance update rather than unsupported commentary.",
             claims=[
                 DraftClaim(
-                    claim="The ₹91,000 crore facility is being built with Taiwan's PSMC.",
+                    claim=clearance_quote,
                     claim_type="fact",
-                    supporting_quote=quote,
-                    source_url="https://indianexpress.com/article/business/tata-electronics-dholera-semiconductor-plant",
+                    supporting_quote=clearance_quote,
+                    source_url=source_url,
                 )
             ],
         ),
