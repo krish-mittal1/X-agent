@@ -19,6 +19,7 @@ from app.memory.models import (
 )
 from app.memory.repositories import DraftRepository, PostRepository
 from app.publishing.publisher import Publisher
+from app.schemas.publishing import PublishResult
 from app.publishing.x_client import (
     AmbiguousPublishError,
     XPost,
@@ -46,6 +47,15 @@ class FakeXClient:
         self.calls.append({"text": text, "in_reply_to": in_reply_to})
         post_id = str(1000 + self.counter)
         return XPost(id=post_id, text=text, url=f"https://x.com/i/web/status/{post_id}", raw={})
+
+
+class FakeBrowserProvider:
+    def __init__(self) -> None:
+        self.calls: list[tuple[int, list[str]]] = []
+
+    async def publish(self, draft, parts, *, decision=None):  # type: ignore[no-untyped-def]
+        self.calls.append((draft.id, parts))
+        return PublishResult(status="published", draft_id=draft.id, post_ids=["browser-1"])
 
 
 def live_settings(settings: Settings, **overrides) -> Settings:  # type: ignore[no-untyped-def]
@@ -147,6 +157,25 @@ async def test_dry_run_never_calls_x(settings, engine, account) -> None:
         posts = (await session.scalars(select(Post))).all()
     assert draft is not None and draft.status == "ready"
     assert posts == []
+
+
+async def test_brave_cdp_dispatches_to_browser_provider(settings, engine, account) -> None:
+    draft_id = await create_draft(account.id)
+    browser = FakeBrowserProvider()
+    brave = settings.model_copy(
+        update={
+            "publishing_enabled": True,
+            "dry_run": False,
+            "x_publishing_mode": "brave_cdp",
+            "x_api_enabled": False,
+            "min_hours_between_posts": 0.0,
+        }
+    )
+    result = await Publisher(
+        brave, db_module.get_session_factory(), provider=browser  # type: ignore[arg-type]
+    ).publish_original(draft_id)
+    assert result.status == "published"
+    assert browser.calls == [(draft_id, [BODY])]
 
 
 async def test_kill_switch_prevents_call(settings, engine, account) -> None:

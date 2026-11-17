@@ -197,9 +197,13 @@ class Publisher:
                     policy=decision,
                 )
 
-            # Strict ₹0 Zero-Cost Mode: Route to LocalDraftProvider immediately.
-            # Never connects to api.x.com or initializes an X OAuth client.
-            if self.settings.is_zero_cost_mode or self.settings.x_publishing_mode == "local_draft":
+            # Local-draft mode never leaves the database.  Brave CDP is also
+            # zero-cost, but is an explicit browser-publishing mode and must
+            # reach its provider rather than being silently staged forever.
+            if self.settings.x_publishing_mode == "local_draft":
+                await session.commit()
+                return await self.provider.publish(draft, parts, decision=decision)
+            if self.settings.x_publishing_mode == "brave_cdp":
                 await session.commit()
                 return await self.provider.publish(draft, parts, decision=decision)
 
@@ -529,9 +533,12 @@ class Publisher:
                     policy=decision,
                 )
 
-            # Strict ₹0 Zero-Cost Mode: Route to LocalDraftProvider immediately.
-            # Never connects to api.x.com or initializes an X OAuth client.
-            if self.settings.is_zero_cost_mode or self.settings.x_publishing_mode == "local_draft":
+            # See the original-post path above: only local_draft is staging
+            # only; brave_cdp performs the configured browser dispatch.
+            if self.settings.x_publishing_mode == "local_draft":
+                await session.commit()
+                return await self.provider.publish(draft, parts, decision=decision)
+            if self.settings.x_publishing_mode == "brave_cdp":
                 await session.commit()
                 return await self.provider.publish(draft, parts, decision=decision)
 
