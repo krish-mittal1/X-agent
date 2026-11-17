@@ -136,9 +136,23 @@ class BraveCDPPublisher(PublishingProvider):
         if not handle:
             return None
         excluded = excluded_ids or set()
-        profile_url = f"https://x.com/{handle}/with_replies" if include_replies else f"https://x.com/{handle}"
-        expected = " ".join(text.split())
+
+        def _clean_text(s: str) -> str:
+            # Strip URLs and collapse whitespace for resilient matching on quote-tweets/replies
+            no_urls = re.sub(r"https?://\S+", "", s)
+            return " ".join(no_urls.split()).strip()
+
+        expected_clean = _clean_text(text)
+        expected_raw = " ".join(text.split())
+
+        urls_to_try = (
+            [f"https://x.com/{handle}/with_replies", f"https://x.com/{handle}"]
+            if include_replies
+            else [f"https://x.com/{handle}", f"https://x.com/{handle}/with_replies"]
+        )
+
         for attempt in range(3):
+            profile_url = urls_to_try[attempt % len(urls_to_try)]
             await page.goto(profile_url, wait_until="domcontentloaded", timeout=35000)
             articles = page.locator('article[data-testid="tweet"]')
             try:
@@ -152,8 +166,16 @@ class BraveCDPPublisher(PublishingProvider):
                 text_node = article.locator('[data-testid="tweetText"]').first
                 if await text_node.count() == 0:
                     continue
-                visible_text = " ".join((await text_node.inner_text()).split())
-                if visible_text != expected:
+                raw_inner = await text_node.inner_text()
+                visible_raw = " ".join(raw_inner.split())
+                visible_clean = _clean_text(raw_inner)
+
+                matches = (
+                    visible_raw == expected_raw
+                    or (expected_clean and expected_clean in visible_clean)
+                    or (visible_clean and visible_clean in expected_clean)
+                )
+                if not matches:
                     continue
                 links = article.locator(f'a[href*="/{handle}/status/"]')
                 for link_index in range(await links.count()):
@@ -504,6 +526,7 @@ class BraveCDPPublisher(PublishingProvider):
                                 account_id=draft.account_id,
                                 x_post_id=post_id,
                                 text=text_content,
+                                kind=draft.kind,
                                 draft_id=draft.id,
                                 position=position,
                                 published_at=now,

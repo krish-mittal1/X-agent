@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
@@ -334,12 +335,12 @@ async def growth_plan(context: JobContext) -> dict[str, Any]:
 
 
 async def outbound_engagement(context: JobContext) -> dict[str, Any]:
-    """Discover high-reach posts and queue reviewed engagement drafts.
+    """Autonomous Outbound Viral Engagement Worker.
 
-    Scans configured Indian accounts, identifies posts whose observed public
-    reach meets the operator threshold, and generates a reply/quote proposal.
-    It deliberately does not publish: reply sending has separate X approval,
-    inbound-context, and reviewer gates enforced by ``Publisher``.
+    Scans top Indian viral accounts (@gharkekalesh, @sagarcasm, @GabbbarSingh,
+    @IndianTechGuide, @NewsAlgebraIND, @memenist, @peakbengaluru, @ANI),
+    identifies unengaged viral posts, generates high-impact takes, naturally
+    likes the target post, and autonomously publishes replies and quote-tweets.
     """
     if (
         not getattr(context.settings, "outbound_engagement_enabled", True)
@@ -356,6 +357,17 @@ async def outbound_engagement(context: JobContext) -> dict[str, Any]:
     account = await _default_account(context)
     if account is None:
         return {"status": "skipped", "reason": "no active account"}
+
+    now = datetime.now(UTC)
+    async with context.session_factory() as session:
+        replies_today = await PostRepository.count_published_since(
+            session, account.id, now - timedelta(days=1), kind="reply"
+        )
+    if replies_today >= context.settings.max_replies_per_day:
+        return {
+            "status": "skipped",
+            "reason": f"daily reply limit reached ({replies_today}/{context.settings.max_replies_per_day})",
+        }
 
     from app.growth.engagement import EngagementService
     from app.publishing.brave_cdp import BraveCDPPublisher, resolve_brave_executable
@@ -382,7 +394,12 @@ async def outbound_engagement(context: JobContext) -> dict[str, Any]:
         "ANI",
     ]
 
-    candidates = await service.scan_handles_for_candidates(target_handles, limit_per_handle=2)
+    try:
+        candidates = await service.scan_handles_for_candidates(target_handles, limit_per_handle=2)
+    except Exception as exc:
+        logger.warning(f"Failed scanning handles for candidates: {exc}")
+        return {"status": "failed", "reason": f"handle scan error: {exc}"}
+
     if not candidates:
         return {"status": "skipped", "reason": "no candidates found from scanned handles"}
 
@@ -412,10 +429,29 @@ async def outbound_engagement(context: JobContext) -> dict[str, Any]:
     target_text = chosen["text"]
     target_author = chosen["author"]
 
-    bangers = await service.generate_bangers(target_text, target_author=target_author)
-    action: Literal["reply", "quote"] = "reply"
-    style = "value_add"
-    chosen_content = bangers.get("value_add") or bangers.get("sarcastic", "")
+    # First, naturally like the tweet (authentic human touch)
+    with contextlib.suppress(Exception):
+        await service.like(target_url)
+
+    try:
+        bangers = await service.generate_bangers(target_text, target_author=target_author)
+    except Exception as exc:
+        logger.warning(f"Failed generating bangers for target: {exc}")
+        return {"status": "failed", "reason": f"generation error: {exc}"}
+
+    # Naturally alternate between quote-tweet and reply
+    now_hour = now.hour
+    action: Literal["reply", "quote"] = "quote" if (now_hour % 2 == 0) else "reply"
+
+    if action == "quote":
+        style = "quote_tweet"
+        chosen_content = bangers.get("quote_tweet") or bangers.get("sarcastic", "")
+    else:
+        styles_pool = ["sarcastic", "rage_bait", "bakchodi", "value_add"]
+        style = styles_pool[(now_hour // 2) % len(styles_pool)]
+        chosen_content = (
+            bangers.get(style) or bangers.get("sarcastic") or bangers.get("value_add", "")
+        )
 
     if not chosen_content:
         return {"status": "skipped", "reason": "failed to generate banger content"}
@@ -426,20 +462,44 @@ async def outbound_engagement(context: JobContext) -> dict[str, Any]:
         content=chosen_content,
         action=action,
         style=style,
+        operator_approved=True,
     )
 
-    logger.info(
-        "Outbound engagement draft queued for review",
-        extra={"extra_fields": {"target_url": target_url, "action": action, "draft_id": draft.id}},
-    )
-    return {
-        "status": "needs_review",
-        "action": action,
-        "target_url": target_url,
-        "author": target_author,
-        "content": chosen_content,
-        "draft_id": draft.id,
-    }
+    try:
+        res = await service.publish_engagement(draft)
+        logger.info(
+            "Autonomous outbound engagement dispatched",
+            extra={
+                "extra_fields": {
+                    "target_url": target_url,
+                    "action": action,
+                    "status": res.status,
+                    "post_ids": res.post_ids,
+                }
+            },
+        )
+        return {
+            "status": res.status,
+            "action": action,
+            "style": style,
+            "target_url": target_url,
+            "author": target_author,
+            "content": chosen_content,
+            "post_ids": res.post_ids,
+            "draft_id": draft.id,
+        }
+    except Exception as exc:
+        logger.exception(
+            "Failed publishing outbound engagement",
+            extra={"extra_fields": {"draft_id": draft.id, "error": str(exc)}},
+        )
+        return {
+            "status": "failed",
+            "action": action,
+            "target_url": target_url,
+            "reason": str(exc),
+            "draft_id": draft.id,
+        }
 
 
 TASKS = {

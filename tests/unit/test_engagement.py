@@ -146,3 +146,98 @@ async def test_create_engagement_draft_stores_quoted_post_url() -> None:
     assert draft.policy_report.get("target_author") == "IndianTechGuide"
     assert draft.policy_report.get("target_post_id") == "1885544332211"
     assert draft.status == "needs_review"
+
+
+def test_viral_candidates_fallback_when_none_meet_threshold() -> None:
+    """When no candidates reach the minimum threshold, fallback to ranking valid candidates."""
+    candidates = [
+        {"tweet_id": "10", "text": "fresh tweet 1", "impressions": 5_000, "likes": 100},
+        {"tweet_id": "20", "text": "fresh tweet 2", "impressions": 8_000, "likes": 500},
+        {"tweet_id": "", "text": "invalid without id", "impressions": 9_000},
+    ]
+    # Threshold is 50,000, but none reach it
+    ranked = rank_viral_candidates(candidates, 50_000)
+    assert len(ranked) == 2
+    assert ranked[0]["tweet_id"] == "20"
+    assert ranked[1]["tweet_id"] == "10"
+
+
+@pytest.mark.asyncio
+async def test_create_engagement_draft_operator_approved() -> None:
+    """Verifies that operator_approved sets DRAFT_APPROVED and passes verification."""
+    settings = make_settings()
+    mock_llm = MagicMock()
+
+    class FakeSession:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            pass
+
+        def add(self, obj):
+            obj.id = 99
+
+        async def flush(self):
+            pass
+
+        async def commit(self):
+            pass
+
+    mock_factory = MagicMock(return_value=FakeSession())
+    service = EngagementService(settings, mock_llm, mock_factory)
+
+    draft = await service.create_engagement_draft(
+        account_id=1,
+        target_post_url="https://x.com/IndianTechGuide/status/1885544332211",
+        content="Automated banger quote",
+        action="quote",
+        style="quote_tweet",
+        operator_approved=True,
+    )
+
+    assert draft.status == "approved"
+    assert draft.verification_report.get("passed") is True
+    assert draft.policy_report.get("operator_approved") is True
+
+
+@pytest.mark.asyncio
+async def test_publish_engagement_auto_approves_when_outbound_enabled() -> None:
+    """Verifies publish_engagement auto-approves and dispatches when outbound engagement is enabled."""
+    settings = make_settings(outbound_engagement_enabled=True, publishing_enabled=True, dry_run=False)
+    mock_llm = MagicMock()
+    mock_publisher = MagicMock()
+    mock_publisher.publish = AsyncMock()
+
+    from app.memory.models import Draft
+
+    fake_draft = Draft(
+        account_id=1,
+        kind="reply",
+        status="needs_review",
+        idempotency_key="k1",
+        body="Nice reply",
+        policy_report={},
+        verification_report={},
+    )
+    fake_draft.id = 123
+
+    class FakeSession:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            pass
+
+        async def get(self, model, draft_id):
+            return fake_draft
+
+        async def commit(self):
+            pass
+
+    mock_factory = MagicMock(return_value=FakeSession())
+    service = EngagementService(settings, mock_llm, mock_factory, publisher=mock_publisher)
+
+    await service.publish_engagement(fake_draft)
+    assert fake_draft.status == "approved"
+    mock_publisher.publish.assert_called_once()

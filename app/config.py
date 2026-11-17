@@ -187,9 +187,8 @@ class Settings(BaseSettings):
     # the model cannot turn a factual story into an opinion.  Comedic formats
     # are explicitly limited to source-grounded observations and satire.
     post_format_mix: str = (
-        "straight_news:0.20,political_news:0.10,business_economy:0.10,"
-        "explainer:0.10,geopolitics_defence:0.08,quote_led:0.07,"
-        "breaking_news:0.05,hot_take:0.10,relatable:0.10,shitpost:0.10"
+        "hot_take:0.25,relatable:0.20,shitpost:0.15,breaking_news:0.15,"
+        "straight_news:0.10,explainer:0.10,quote_led:0.05"
     )
     banned_phrases: str = (
         "as an ai language model,"
@@ -257,7 +256,7 @@ class Settings(BaseSettings):
     reply_draft_interval_minutes: int = 120
     outbound_engagement_interval_minutes: int = 240
     outbound_engagement_enabled: bool = True
-    outbound_min_impressions: int = 1_000_000
+    outbound_min_impressions: int = 10_000
     consolidation_interval_hours: int = 24
     analytics_interval_hours: int = 6
     job_lease_seconds: int = 600
