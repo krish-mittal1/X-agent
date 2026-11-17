@@ -27,6 +27,8 @@ from app.security import detect_prompt_injection
 _WHITESPACE = re.compile(r"\s+")
 _NUMBER = re.compile(r"\b\d+(?:[.,]\d+)?%?\b")
 _WORD = re.compile(r"[a-z][a-z0-9-]+")
+_SENTENCE_BREAK = re.compile(r"(?<=[.!?])\s+|\n+")
+_URL = re.compile(r"https?://\S+", re.IGNORECASE)
 _STOP = {
     "the",
     "and",
@@ -159,6 +161,36 @@ def has_unlisted_quantitative_assertion(post_text: str, claims: list[DraftClaim]
         if claim.claim_type == "fact" and claim.supporting_quote
     }
     return not declared
+
+
+def unlisted_factual_sentences(post_text: str, claims: list[DraftClaim]) -> list[str]:
+    """Find factual-looking sentences not covered by a declared claim and quote.
+
+    This does not itself establish truth. It prevents a structured model response
+    from declaring one source-backed fact and then appending an unrelated factual
+    sentence that never reaches the claim verifier.
+    """
+    evidence = [
+        _claim_tokens(f"{claim.claim} {claim.supporting_quote}")
+        for claim in claims
+        if claim.claim_type in {"fact", "interpretation", "estimate"}
+    ]
+    uncovered: list[str] = []
+    for raw_sentence in _SENTENCE_BREAK.split(_URL.sub("", post_text)):
+        sentence = raw_sentence.strip()
+        if not sentence or sentence.startswith(("http://", "https://")) or sentence.endswith("?"):
+            continue
+        sentence_tokens = _claim_tokens(sentence)
+        if len(sentence_tokens) < 3:
+            continue
+        covered = any(
+            len(sentence_tokens & evidence_tokens) / len(sentence_tokens) >= 0.55
+            for evidence_tokens in evidence
+            if evidence_tokens
+        )
+        if not covered:
+            uncovered.append(sentence[:160])
+    return uncovered
 
 
 class SourceView:

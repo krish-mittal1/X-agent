@@ -23,9 +23,8 @@ SOURCE_TEXT = (
 QUOTE = "Benchmarks report 1,200 tokens per second on a single CPU core"
 
 BASE_PART = (
-    "The new scheduler batches requests instead of serving them one at a time, and the "
-    "paged KV cache cuts fragmentation. The reported 1,200 tok/s on one CPU core matters "
-    "because it makes local inference viable for small coding agents. "
+    "The release adds a paged KV cache and a batching scheduler. Benchmarks report "
+    "1,200 tokens per second on a single CPU core. "
     "https://github.com/acme/widget/releases/tag/v2"
 )
 
@@ -51,9 +50,20 @@ def draft_content(claims: list[DraftClaim] | None = None, parts: list[str] | Non
         rationale="Concrete throughput and deployment trade-off for local agents.",
         claims=claims
         if claims is not None
-        else [DraftClaim(claim="The release reports 1,200 tokens per second on one CPU core.",
-                         claim_type="fact", supporting_quote=QUOTE,
-                         source_url="https://github.com/acme/widget/releases/tag/v2")],
+        else [
+            DraftClaim(
+                claim="The release adds a paged KV cache and a batching scheduler.",
+                claim_type="fact",
+                supporting_quote="The release adds a paged KV cache and a batching scheduler.",
+                source_url="https://github.com/acme/widget/releases/tag/v2",
+            ),
+            DraftClaim(
+                claim="The release reports 1,200 tokens per second on one CPU core.",
+                claim_type="fact",
+                supporting_quote=QUOTE,
+                source_url="https://github.com/acme/widget/releases/tag/v2",
+            ),
+        ],
         uncertainty=["Single-threaded benchmark; not independently reproduced."],
     )
 
@@ -102,7 +112,7 @@ async def test_verified_draft_is_ready_and_persisted(settings, engine, account) 
     assert draft.body.startswith("The new scheduler")
     assert draft.source_document_ids == [source_id]
     assert draft.verification_report["passed"] is True
-    assert len(claims) == 1 and claims[0].status == "verified"
+    assert len(claims) == 2 and {claim.status for claim in claims} == {"verified"}
     assert document is not None and document.processed_at is not None
     assert memory_count == []  # drafts are not promoted to memory before publishing
 

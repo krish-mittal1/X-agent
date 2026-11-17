@@ -106,6 +106,9 @@ _FACTUAL_RULES = """\
 - List every factual assertion in `claims` with an exact `supporting_quote` copied
   from a source, plus the source URL. Classify inferences as "interpretation",
   numbers you derive as "estimate", and judgements as "opinion".
+- Every declarative sentence or factual clause in `parts` must be covered by a
+  corresponding item in `claims`. If it has no exact supporting quote, remove it;
+  do not add generic scene-setting, predictions, or implied context.
 - Never invent a benchmark, a price, a date or a quote."""
 
 _COMEDIC_RULES = """\

@@ -4,7 +4,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    EMBEDDING_DEVICE=cpu
+    EMBEDDING_DEVICE=cpu \
+    HF_HOME=/opt/huggingface
 
 WORKDIR /app
 
@@ -20,16 +21,21 @@ RUN pip install --no-cache-dir \
 
 # Bake the default embedding model into the image so startup needs no download.
 ARG EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('${EMBEDDING_MODEL}')"
+RUN useradd --create-home --uid 10001 appuser \
+    && mkdir -p "$HF_HOME" /app/.temp_media \
+    && python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('${EMBEDDING_MODEL}')" \
+    && chown -R appuser:appuser "$HF_HOME" /app
+
+# The model above is intentionally baked into the image.  Runtime workers must
+# use that revision and must not stall the newsroom cycle on Hub metadata calls.
+ENV HF_HUB_OFFLINE=1
 
 COPY alembic.ini pyproject.toml ./
 COPY migrations ./migrations
 COPY app ./app
 COPY scripts ./scripts
 
-RUN useradd --create-home --uid 10001 appuser \
-    && mkdir -p /home/appuser/.cache \
-    && chown -R appuser:appuser /app /home/appuser
+RUN chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 8000

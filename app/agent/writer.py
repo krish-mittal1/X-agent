@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.agent.critic import EditorialCriticService
 from app.agent.editorial_engine import EditorialEngine
-from app.agent.formats import choose_format, requires_numeric_evidence
+from app.agent.formats import choose_format, is_factual, requires_numeric_evidence
 from app.agent.image_relevance import assess_image_attachment, select_document_image
 from app.config import Settings
 from app.logging_config import get_logger
@@ -36,7 +36,11 @@ from app.publishing.text_rules import (
 )
 from app.research.event_service import EventIntelligenceService
 from app.research.service import ResearchService
-from app.research.verification import ClaimVerifier, has_unlisted_quantitative_assertion
+from app.research.verification import (
+    ClaimVerifier,
+    has_unlisted_quantitative_assertion,
+    unlisted_factual_sentences,
+)
 from app.schemas.content import (
     ContentGenerationError,
     DraftOutcome,
@@ -298,6 +302,9 @@ class ContentWriter:
 
         champion = selection_result.champion
         alternatives = selection_result.alternatives
+        # The newsroom classifier is authoritative for the selected candidate.
+        # The earlier format choice only sets the desired mix before generation.
+        validation_format = champion.news_format or validation_format
 
         # -------------------------------------------------------------------
         # 4. Independent Claim Verification on Candidates (Stage 5)
@@ -371,6 +378,13 @@ class ContentWriter:
             joined, champion.claims
         ):
             blocking.append("post contains quantitative claims without a declared supporting quote")
+        if is_factual(validation_format):
+            uncovered = unlisted_factual_sentences(joined, champion.claims)
+            if uncovered:
+                blocking.append(
+                    "post contains factual sentence(s) not covered by declared evidence: "
+                    + "; ".join(repr(sentence) for sentence in uncovered)
+                )
 
         if champion.critic_score and champion.critic_score.verdict == "rejected":
             blocking.append(champion.critic_score.critic_reasoning)

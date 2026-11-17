@@ -8,6 +8,7 @@ from app.research.verification import (
     ClaimVerifier,
     has_unlisted_quantitative_assertion,
     quote_supported,
+    unlisted_factual_sentences,
 )
 from app.schemas.content import DraftClaim
 
@@ -159,3 +160,19 @@ def test_unlisted_quantitative_assertion_detected() -> None:
     declared = [fact("1,200 tokens/s benchmark", "1,200 tokens per second")]
     assert has_unlisted_quantitative_assertion("Benchmark shows 1,200 tokens/s.", declared) is False
     assert has_unlisted_quantitative_assertion("A useful architectural change.", []) is False
+
+
+def test_unlisted_factual_sentence_is_detected() -> None:
+    claims = [
+        fact(
+            "Congress formed screening committees for five poll-bound states.",
+            "Congress formed screening committees for five poll-bound states.",
+        )
+    ]
+    post = (
+        "Congress formed screening committees for five poll-bound states. "
+        "The appointments signal preparations are ramping up for the elections."
+    )
+    assert unlisted_factual_sentences(post, claims) == [
+        "The appointments signal preparations are ramping up for the elections."
+    ]
