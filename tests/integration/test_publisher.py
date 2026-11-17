@@ -168,6 +168,8 @@ async def test_brave_cdp_dispatches_to_browser_provider(settings, engine, accoun
             "dry_run": False,
             "x_publishing_mode": "brave_cdp",
             "x_api_enabled": False,
+            "x_auth_token": SecretStr("test-auth-token"),
+            "x_ct0": SecretStr("test-csrf-token"),
             "min_hours_between_posts": 0.0,
         }
     )
