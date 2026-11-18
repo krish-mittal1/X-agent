@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
@@ -429,26 +428,26 @@ async def outbound_engagement(context: JobContext) -> dict[str, Any]:
     target_text = chosen["text"]
     target_author = chosen["author"]
 
-    # First, naturally like the tweet (authentic human touch)
-    with contextlib.suppress(Exception):
-        await service.like(target_url)
-
     try:
         bangers = await service.generate_bangers(target_text, target_author=target_author)
     except Exception as exc:
         logger.warning(f"Failed generating bangers for target: {exc}")
         return {"status": "failed", "reason": f"generation error: {exc}"}
 
-    # Naturally alternate between quote-tweet and reply
-    now_hour = now.hour
-    action: Literal["reply", "quote"] = "quote" if (now_hour % 2 == 0) else "reply"
+    # Alternate deterministically by engagement interval, not wall-clock hour.
+    # A four-hour interval can otherwise land on the same hour parity forever.
+    interval_seconds = max(
+        60, int(context.settings.outbound_engagement_interval_minutes * 60)
+    )
+    interval_index = int(now.timestamp() // interval_seconds)
+    action: Literal["reply", "quote"] = "quote" if interval_index % 2 else "reply"
 
     if action == "quote":
         style = "quote_tweet"
         chosen_content = bangers.get("quote_tweet") or bangers.get("sarcastic", "")
     else:
         styles_pool = ["sarcastic", "rage_bait", "bakchodi", "value_add"]
-        style = styles_pool[(now_hour // 2) % len(styles_pool)]
+        style = styles_pool[interval_index % len(styles_pool)]
         chosen_content = (
             bangers.get(style) or bangers.get("sarcastic") or bangers.get("value_add", "")
         )

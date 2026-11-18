@@ -139,7 +139,6 @@ async def test_outbound_engagement_dispatches_live_and_likes() -> None:
         patch("app.publishing.brave_cdp.BraveCDPPublisher", return_value=mock_publisher),
         patch("app.publishing.brave_cdp.resolve_brave_executable", return_value="/usr/bin/chromium"),
         patch("app.growth.engagement.EngagementService.scan_handles_for_candidates", new_callable=AsyncMock) as mock_scan,
-        patch("app.growth.engagement.EngagementService.like", new_callable=AsyncMock) as mock_like,
         patch("app.growth.engagement.EngagementService.generate_bangers", new_callable=AsyncMock) as mock_gen,
         patch("app.growth.engagement.EngagementService.publish_engagement", new_callable=AsyncMock) as mock_publish,
     ):
@@ -171,7 +170,6 @@ async def test_outbound_engagement_dispatches_live_and_likes() -> None:
         assert res["status"] == "published"
         assert res["target_url"] == "https://x.com/IndianTechGuide/status/123456"
         assert res["post_ids"] == ["status_998877"]
-        mock_like.assert_called_once_with("https://x.com/IndianTechGuide/status/123456")
         mock_publish.assert_called_once()
 
 
