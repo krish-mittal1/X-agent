@@ -136,6 +136,15 @@ services:
       MAX_PUBLISH_FAILURES: ${MAX_PUBLISH_FAILURES:-3}
     command:
       ["sh", "-c", "while true; do python -m scripts.monitor --quiet; sleep 900; done"]
+    # The image's default healthcheck probes the app's HTTP port.  The monitor
+    # service has no HTTP server, so override it with the actual monitor probe;
+    # otherwise Docker reports this healthy sidecar as permanently unhealthy.
+    healthcheck:
+      test: ["CMD", "python", "-m", "scripts.monitor", "--quiet"]
+      interval: 5m
+      timeout: 45s
+      start_period: 45s
+      retries: 3
     depends_on:
       app:
         condition: service_started
