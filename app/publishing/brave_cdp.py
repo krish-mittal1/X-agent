@@ -734,7 +734,7 @@ class BraveCDPPublisher(PublishingProvider):
 
         Uses the X compose intent URL with text pre-filled, then attaches the
         video file via the hidden file input, waits for processing, and clicks
-        Post.  Falls back to text-only if video upload fails.
+        Post. Refuses a text-only fallback if video upload fails.
         """
         if not self.settings.publishing_enabled or self.settings.dry_run:
             logger.info("Video publish skipped: dry_run active")
@@ -798,12 +798,15 @@ class BraveCDPPublisher(PublishingProvider):
                                     await attachment.wait_for(state="visible", timeout=20_000)
                                     video_attached = True
                                     logger.info("Video attachment confirmed visible")
-                                except Exception:
-                                    logger.warning("Video attachment preview not confirmed; posting text-only")
+                                except Exception as attach_err:
+                                    raise RuntimeError(
+                                        f"video attachment preview not confirmed: {attach_err}"
+                                    )
                         except Exception as vid_err:
-                            logger.warning(
-                                f"Video file attachment failed ({vid_err}); posting text-only"
-                            )
+                            raise RuntimeError(f"video file attachment failed: {vid_err}") from vid_err
+
+                    if not video_attached:
+                        raise RuntimeError("video was not attached; refusing text-only fallback")
 
                     # Click Post button
                     post_button = page.locator(

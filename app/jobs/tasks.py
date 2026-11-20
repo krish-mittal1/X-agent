@@ -545,6 +545,11 @@ async def viral_video_repost(context: JobContext) -> dict[str, Any]:
         return {"status": "skipped", "reason": "publishing disabled / dry run"}
     if not getattr(context.settings, "viral_video_repost_enabled", True):
         return {"status": "skipped", "reason": "viral video repost disabled"}
+    if not getattr(context.settings, "viral_video_rights_confirmed", False):
+        return {
+            "status": "skipped",
+            "reason": "video source rights/permission have not been confirmed",
+        }
     if context.settings.emergency_pause:
         return {"status": "skipped", "reason": "emergency pause"}
 

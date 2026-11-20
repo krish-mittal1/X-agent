@@ -166,7 +166,7 @@ async def generate_video_caption(
 
     Sends up to _FRAME_COUNT JPEG keyframes as base64 image_url parts
     inside a user message, alongside the original tweet text as context.
-    Falls back to text-only if no keyframes are available.
+    Refuses text-only inference if no keyframes are available.
     """
     if not llm.enabled:
         raise RuntimeError("LLM provider is disabled; cannot generate video caption")
@@ -194,11 +194,7 @@ async def generate_video_caption(
             *image_parts,
         ]
     else:
-        user_content = (
-            f"{context_block}\n\n"
-            "No video frames available. Based on the tweet text above, "
-            "infer the video topic and write a fresh banger caption."
-        )
+        raise ValueError("video analysis requires visual evidence; no keyframes were extracted")
 
     messages = [
         LLMMessage(role="system", content=_CAPTION_SYSTEM_PROMPT),
@@ -383,10 +379,6 @@ async def post_video_with_caption(
     """
     from app.memory.models import DRAFT_APPROVED
     from app.memory.repositories import DraftRepository
-    from app.publishing.brave_cdp import BraveCDPPublisher
-
-    publisher = BraveCDPPublisher(settings, session_factory)
-
     async with session_factory() as session:
         draft = await DraftRepository.create(
             session,
@@ -402,28 +394,28 @@ async def post_video_with_caption(
             rationale="Viral video repost with fresh AI-generated caption",
             source_document_ids=[],
             verification_report={
-                "passed": True,
-                "operator_approved": True,
+                "passed": False,
+                "operator_approved": False,
                 "claims": [],
-                "unverified_facts": 0,
-                "manual_review_required": False,
+                "unverified_facts": 1,
+                "manual_review_required": True,
+                "reason": "video media and generated commentary require rights and factual review",
             },
             policy_report={
                 "source": "video_repost_engine",
                 "source_tweet_url": source_tweet_url,
-                "operator_approved": True,
-                "zero_cost": True,
+                "operator_approved": False,
+                "rights_confirmed": False,
                 "video_path": str(video_path),
             },
         )
         await session.commit()
 
-    # Publish with video attachment
-    result = await publisher.publish_with_video(draft, caption, video_path)
     return {
-        "status": result.status,
+        "status": "needs_review",
         "draft_id": draft.id,
-        "post_ids": result.post_ids,
+        "post_ids": [],
         "caption": caption,
         "source_tweet_url": source_tweet_url,
+        "reason": "video draft staged; rights, provenance and factual review are required before publishing",
     }
