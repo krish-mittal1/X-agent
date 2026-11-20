@@ -77,14 +77,19 @@ async def main_async(args: argparse.Namespace) -> None:
         tweet_text = args.text or ""
         tweet_author = ""
 
-        if not target_url and args.auto:
+        if not target_url and (args.auto or args.list):
             print("[*] Scanning viral handles for video posts with high reach...", flush=True)
-            configured = [h.strip() for h in getattr(settings, "viral_target_handles", "").split(",") if h.strip()]
-            target_handles = configured or [
-                "gharkekalesh", "DeadlyKalesh", "KaleshChahiye", "crazyclips_",
-                "sagarcasm", "GabbbarSingh", "coolfunnytshirt", "Trend_ulkar",
-                "memenist", "desimojito", "thetatva", "IndianTechGuide", "peakbengaluru"
-            ]
+            if args.handles:
+                target_handles = [h.strip() for h in args.handles.split(",") if h.strip()]
+            else:
+                configured = [h.strip() for h in getattr(settings, "viral_target_handles", "").split(",") if h.strip()]
+                target_handles = configured or [
+                    "gharkekalesh", "DeadlyKalesh", "KaleshChahiye", "crazyclips_",
+                    "sagarcasm", "GabbbarSingh", "coolfunnytshirt", "Trend_ulkar",
+                    "memenist", "desimojito", "thetatva", "IndianTechGuide", "peakbengaluru"
+                ]
+
+            print(f"[*] Scanning {len(target_handles)} handles: {', '.join(target_handles[:5])}...", flush=True)
             candidates = await scan_viral_handles_for_video_posts(
                 settings,
                 target_handles,
@@ -95,13 +100,23 @@ async def main_async(args: argparse.Namespace) -> None:
                 print("[-] No high-reach video posts found across viral handles.", flush=True)
                 return
 
-            print(f"[+] Found {len(candidates)} candidate video tweets.", flush=True)
-            top = candidates[0]
+            print(f"\n[+] Found {len(candidates)} high-impression video candidates:", flush=True)
+            for idx, c in enumerate(candidates, 1):
+                views = c.get("impressions", 0)
+                author = c.get("author", "unknown")
+                text = (c.get("text") or "")[:80].replace("\n", " ")
+                print(f"  {idx}. [{views:,} views] @{author}: \"{text}\"", flush=True)
+                print(f"     URL: {c['url']}", flush=True)
+
+            if args.list:
+                return
+
+            chosen_idx = max(0, min(args.pick - 1, len(candidates) - 1)) if args.pick else 0
+            top = candidates[chosen_idx]
             target_url = top["url"]
             tweet_text = top.get("text", "")
             tweet_author = top.get("author", "")
-            print(f"[*] Selected top candidate: {target_url} (Author: @{tweet_author}, Views: {top.get('impressions', 0):,})", flush=True)
-            print(f"[*] Original text: {tweet_text}", flush=True)
+            print(f"\n[*] Selected candidate #{chosen_idx + 1}: {target_url} (Views: {top.get('impressions', 0):,})", flush=True)
 
         if not target_url:
             print("[-] Error: Please specify --tweet <url> or use --auto.", flush=True)
@@ -144,21 +159,25 @@ async def main_async(args: argparse.Namespace) -> None:
 
             print(f"[+] Extracted {len(keyframes)} keyframes.", flush=True)
 
-            print("[*] Generating fresh NotANerd (@ssh_bugs) caption with Gemini Vision...", flush=True)
-            caption = await generate_video_caption(
-                llm,
-                tweet_text,
-                keyframes,
-                tweet_author=tweet_author,
-            )
-            print(f"\n[+] Generated Caption:\n>>> {caption}\n", flush=True)
+            if args.caption:
+                caption = args.caption
+                print(f"\n[+] Using operator-provided Hinglish Caption:\n>>> {caption}\n", flush=True)
+            else:
+                print("[*] Generating fresh NotANerd (@ssh_bugs) Hinglish caption with Gemini Vision...", flush=True)
+                caption = await generate_video_caption(
+                    llm,
+                    tweet_text,
+                    keyframes,
+                    tweet_author=tweet_author,
+                )
+                print(f"\n[+] Generated Hinglish Caption:\n>>> {caption}\n", flush=True)
 
             if not args.live:
-                print("[!] DRY RUN ONLY: Video was downloaded and caption was generated.", flush=True)
+                print("[!] DRY RUN ONLY: Video was downloaded and Hinglish caption was generated.", flush=True)
                 print("[!] To post live to @ssh_bugs on X, run with --live flag.", flush=True)
                 return
 
-            print("[*] Posting video + caption live via Brave CDP...", flush=True)
+            print("[*] Posting video + Hinglish caption live via Brave CDP...", flush=True)
             result = await post_video_with_caption(
                 settings=settings,
                 session_factory=session_factory,
@@ -175,12 +194,16 @@ async def main_async(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Download viral X video and repost with AI caption.")
+    parser = argparse.ArgumentParser(description="Download viral X video and repost with Hinglish caption.")
     parser.add_argument("--tweet", help="Specific tweet URL containing video to repost.")
     parser.add_argument("--auto", action="store_true", help="Auto-scan viral handles for top video.")
+    parser.add_argument("--list", action="store_true", help="Find and list high-impression video candidates without posting.")
+    parser.add_argument("--handles", help="Comma-separated viral handles to scan (e.g. gharkekalesh,crazyclips_).")
+    parser.add_argument("--pick", type=int, default=1, help="Pick candidate index (1-based) from scan results.")
+    parser.add_argument("--caption", help="Override with custom Hinglish caption instead of AI generation.")
     parser.add_argument("--text", help="Optional original tweet text context if known.")
     parser.add_argument("--limit", type=int, default=3, help="Max posts to inspect per handle.")
-    parser.add_argument("--min-impressions", type=int, default=50_000, help="Min impressions filter.")
+    parser.add_argument("--min-impressions", type=int, default=10_000, help="Min impressions filter.")
     parser.add_argument("--live", action="store_true", help="Actually post live to @ssh_bugs.")
 
     args = parser.parse_args()

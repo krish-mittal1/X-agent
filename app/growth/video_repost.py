@@ -62,7 +62,7 @@ def _extract_keyframes_pillow(video_path: Path, n_frames: int = _FRAME_COUNT) ->
 
 
 def _extract_keyframes(video_path: Path, n_frames: int = _FRAME_COUNT) -> list[bytes]:
-    """Extract keyframes from a video file using ffmpeg (fast & robust) with Pillow fallback."""
+    """Extract keyframes from a video file using ffmpeg (preferred) with Pillow fallback."""
     import subprocess
     import tempfile
 
@@ -84,9 +84,15 @@ def _extract_keyframes(video_path: Path, n_frames: int = _FRAME_COUNT) -> list[b
                     "3",
                     out_pattern,
                 ]
-                res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+                res = subprocess.run(
+                    cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False
+                )
                 if res.returncode == 0:
-                    frames = [f.read_bytes() for f in sorted(Path(kf_dir).glob("frame_*.jpg")) if f.stat().st_size > 0]
+                    frames = [
+                        f.read_bytes()
+                        for f in sorted(Path(kf_dir).glob("frame_*.jpg"))
+                        if f.stat().st_size > 0
+                    ]
                     if frames:
                         return frames[:n_frames]
         except Exception as exc:
@@ -294,20 +300,32 @@ async def download_tweet_video(
 
 
 _CAPTION_SYSTEM_PROMPT = """\
-You are @ssh_bugs on X (Twitter): a razor-sharp, relatable Indian internet voice.
-You have just seen a viral video that another account originally posted.
-You are reposting it on your own account with a COMPLETELY FRESH caption.
+You are @ssh_bugs on X (Twitter): a razor-sharp, relatable Indian internet creator.
+You have just discovered a viral video that is blowing up on Indian Twitter.
+You are posting this video on your account with a COMPLETELY ORIGINAL, HINGLISH caption.
 
-YOUR VOICE:
-- Desi internet native. Group-chat energy. No corporate speak.
-- Short, punchy, human. Zero hashtags. Zero emoji spam.
-- Can be sarcastic, bakchodi, or a sharp hot-take.
-- NEVER copy the original caption. NEVER reference the original author.
-- Treat it as if YOU discovered this video and are sharing it cold.
-- Max 240 chars. No "look at this", no "this is insane", no filler intros.
+LANGUAGE REQUIREMENT (CRITICAL):
+- ALWAYS write in natural, conversational HINGLISH (Hindi written in Roman/English alphabet + English words).
+- Real desi internet slang: words like "bhai", "kalesh", "alag hi", "scene", "jugaad", "chal raha hai", "bawal", "yaar", "matlab", "shanti".
+- Do NOT use Devanagari script (no Hindi letters like 'नमस्ते'). Keep it Roman script English/Hinglish.
+- Do NOT sound like an NRI or a corporate bot. Sound like an observant 22-year-old in a WhatsApp group.
+
+VOICE & TONE:
+- Short, punchy, witty, deadpan sarcasm or observational humor.
+- Max 180 characters. Zero hashtags. Zero spam emojis (at most 1 emoji if it adds comic value).
+- Treat the video as if YOU saw it happen live or just stumbled upon it.
+- NEVER copy the original tweet's text or author.
+- BANNED CLICHES: "Watch till the end", "Wait for it", "This is insane", "Can't believe this", "Look at this".
+
+EXAMPLES OF THE DESIRED VIBE:
+- "Bhai Monday morning ko office login karne ke baad meri aisi hi halat hoti hai"
+- "Alag hi confidence hai bhai ka, pure crowd ke samne script execute kar di"
+- "Delhi metro me bina kalesh ke din poora nahi hota"
+- "Ye konsi scheme hai jo sirf inhi logo ko pata hai bhai"
+- "Background me uncle ka reaction pure cinema hai"
 
 OUTPUT FORMAT (strict, no extra text):
-CAPTION: <your banger caption here>
+CAPTION: <your Hinglish caption here>
 """
 
 
@@ -318,7 +336,7 @@ async def generate_video_caption(
     *,
     tweet_author: str = "",
 ) -> str:
-    """Generate a fresh caption for a viral video using Gemini Vision."""
+    """Generate a fresh Hinglish caption for a viral video using Gemini Vision."""
     if not llm.enabled:
         raise RuntimeError("LLM provider is disabled; cannot generate video caption")
 
@@ -341,14 +359,17 @@ async def generate_video_caption(
             })
 
         user_content = [
-            {"type": "text", "text": f"{context_block}\n\nAbove are keyframes from the viral video. Write the caption now."},
+            {
+                "type": "text",
+                "text": f"{context_block}\n\nAbove are keyframes from the viral video. Write a hilarious, relatable HINGLISH caption for this video in Roman script. Output only the caption.",
+            },
             *image_parts,
         ]
     else:
         user_content = (
             f"{context_block}\n\n"
             "No video frames available. Based on the context above, "
-            "infer the video topic and write a fresh banger caption."
+            "infer the video topic and write a fresh, hilarious HINGLISH caption in Roman script."
         )
 
     messages = [
@@ -446,7 +467,6 @@ async def scan_viral_handles_for_video_posts(
         try:
             for handle in target_handles:
                 clean_handle = handle.lstrip("@")
-                logger.info(f"Scanning viral handle @{clean_handle}...")
                 profile_url = f"https://x.com/{clean_handle}"
                 page = await context.new_page()
                 try:
