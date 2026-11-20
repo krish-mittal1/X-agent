@@ -1,11 +1,13 @@
 """Outbound Engagement & Infiltration Engine for @ssh_bugs.
 
 Allows the agent to act like a real person on X:
-1. Scan high-velocity target accounts (e.g. ANI, IndianTechGuide, NewsAlgebraIND).
-2. Generate 3 distinct banger response options:
+1. Scan top viral handles across all Indian niches (fights/kalesh, cricket, memes, politics, finance).
+2. Generate 5 distinct banger response options:
    - Sarcastic: witty, ironic, sharp reality-check.
-   - Value-Add: missing metrics, hidden catch, consumer/wallet impact.
+   - Strong Take: opinionated, viral debate trigger.
+   - Bakchodi: desi group-chat humor, everyday relatable observation.
    - Quote-Tweet: above-the-fold hook for an independent take on our feed.
+   - Value-Add: missing metrics, hidden catch, consumer/wallet impact.
 3. Publish via Brave CDP browser automation (reply, quote-tweet, or retweet).
 """
 

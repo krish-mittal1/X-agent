@@ -339,10 +339,10 @@ async def growth_plan(context: JobContext) -> dict[str, Any]:
 async def outbound_engagement(context: JobContext) -> dict[str, Any]:
     """Autonomous Outbound Viral Engagement Worker.
 
-    Scans top Indian viral accounts (@gharkekalesh, @sagarcasm, @GabbbarSingh,
-    @IndianTechGuide, @NewsAlgebraIND, @memenist, @peakbengaluru, @ANI),
-    identifies unengaged viral posts, generates high-impact takes, naturally
-    likes the target post, and autonomously publishes replies and quote-tweets.
+    Scans top Indian viral accounts across all niches (fights/kalesh, cricket, memes,
+    politics, finance, and pop culture), identifies unengaged viral posts, generates
+    high-impact takes, naturally likes the target post, and autonomously publishes
+    replies and quote-tweets.
     """
     if (
         not getattr(context.settings, "outbound_engagement_enabled", True)
@@ -385,15 +385,32 @@ async def outbound_engagement(context: JobContext) -> dict[str, Any]:
         publisher=publisher,
     )
 
-    target_handles = list(context.settings.growth_follow_handles) or [
+    target_handles = list(context.settings.viral_handles) or [
+        # Kalesh, Fights & Viral Drama (लड़ाई)
         "gharkekalesh",
+        "DeadlyKalesh",
+        "KaleshChahiye",
+        "crazyclips_",
+        # Memes, Sarcasm & Desi Bakchodi
         "sagarcasm",
         "GabbbarSingh",
-        "IndianTechGuide",
-        "NewsAlgebraIND",
+        "coolfunnytshirt",
+        "Trend_ulkar",
         "memenist",
+        "desimojito",
+        "thetatva",
+        "HasnaZarooriHai",
+        "TupacShakur_IND",
+        # Cricket & Sports Viral
+        "mufaddal_vohra",
+        "CricCrazyJohns",
+        "Johns_Cricket",
+        # Politics, Society & Public Absurdity
+        "IndianTechGuide",
         "peakbengaluru",
-        "ANI",
+        # Entertainment & Pop Culture
+        "filmy_gyan",
+        "tellychakkar",
     ]
 
     try:
@@ -555,17 +572,25 @@ async def viral_video_repost(context: JobContext) -> dict[str, Any]:
         scan_viral_handles_for_video_posts,
     )
 
-    target_handles = [
+    target_handles = list(context.settings.viral_handles) or [
+        # Kalesh, Street Drama & Fights (लड़ाई)
         "gharkekalesh",
+        "DeadlyKalesh",
+        "KaleshChahiye",
+        "crazyclips_",
+        # Viral Memes & Absurdity
         "sagarcasm",
         "GabbbarSingh",
-        "IndianTechGuide",
-        "NewsAlgebraIND",
         "memenist",
+        "thetatva",
+        # Cricket & Sports Highlights
+        "mufaddal_vohra",
+        "CricCrazyJohns",
+        # Tech & City Chaos
+        "IndianTechGuide",
         "peakbengaluru",
-        "ANI",
-        "BBCHindi",
-        "hindustantimes",
+        # Pop Culture & Viral Clips
+        "filmy_gyan",
     ]
 
     try:

@@ -14,10 +14,10 @@ from app.agent.image_relevance import assess_image_attachment
 from app.agent.persona import DEFAULT_PERSONA
 
 
-def test_default_persona_is_the_india_pulse_newsroom() -> None:
-    assert DEFAULT_PERSONA.name == "india-pulse-newsdesk"
-    assert DEFAULT_PERSONA.version >= 16
-    assert "straight reporting" in DEFAULT_PERSONA.system_prompt.lower()
+def test_default_persona_is_the_allrounder_creator() -> None:
+    assert DEFAULT_PERSONA.name == "notanerd-allrounder"
+    assert DEFAULT_PERSONA.version >= 20
+    assert "notanerd" in DEFAULT_PERSONA.system_prompt.lower()
 
 
 def test_news_format_router_detects_political_business_and_quote_posts() -> None:

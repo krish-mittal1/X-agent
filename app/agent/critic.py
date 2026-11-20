@@ -1,12 +1,12 @@
 """Independent Editorial Critic & Quality Scoring Engine (Feature 5).
 
-Evaluates candidate drafts against India Pulse newsroom standards:
-- Factual grounding and attribution
-- News clarity and strong opening
-- Information density
-- Indian relevance and format fit
-- Naturalness
-- Originality without forced contrarianism
+Evaluates candidate drafts against NotANerd (@ssh_bugs) all-rounder standards:
+- Factual grounding and truthfulness
+- Viral punch and strong opening
+- High human relatability and humor
+- Indian cultural relevance and tone fit
+- Natural conversational rhythm
+- Anti-cliché enforcement (zero robotic AI filler)
 
 Deterministic anti-pattern detection flags AI clichés, forced hot takes,
 unattributed allegations, rumour-as-fact, repetitive hooks, and irrelevant images.

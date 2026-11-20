@@ -69,9 +69,27 @@ async def run_engagement(
 
         # Auto-scan if requested
         if auto or (not target_url and handle):
-            target_handles = [handle] if handle else settings.growth_follow_handles
+            target_handles = (
+                [handle]
+                if handle
+                else list(settings.viral_handles or settings.growth_follow_handles)
+            )
             if not target_handles:
-                target_handles = ["IndianTechGuide", "NewsAlgebraIND", "ANI", "livemint"]
+                target_handles = [
+                    "gharkekalesh",
+                    "DeadlyKalesh",
+                    "KaleshChahiye",
+                    "sagarcasm",
+                    "GabbbarSingh",
+                    "coolfunnytshirt",
+                    "Trend_ulkar",
+                    "memenist",
+                    "mufaddal_vohra",
+                    "CricCrazyJohns",
+                    "IndianTechGuide",
+                    "peakbengaluru",
+                    "filmy_gyan",
+                ]
 
             print(f"[*] Scanning latest tweets from target handles: {', '.join(target_handles)}...")
             candidates = await service.scan_handles_for_candidates(

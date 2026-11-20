@@ -245,6 +245,12 @@ class Settings(BaseSettings):
     growth_max_actions_per_target_per_day: int = 1
     growth_burst_window_seconds: float = 300.0
     growth_follow_targets: str = ""  # comma/newline separated handles
+    viral_target_handles: str = (
+        "gharkekalesh,DeadlyKalesh,KaleshChahiye,crazyclips_,"
+        "sagarcasm,GabbbarSingh,coolfunnytshirt,Trend_ulkar,memenist,desimojito,thetatva,HasnaZarooriHai,TupacShakur_IND,"
+        "mufaddal_vohra,CricCrazyJohns,Johns_Cricket,"
+        "IndianTechGuide,peakbengaluru,filmy_gyan,tellychakkar"
+    )
     growth_plan_interval_minutes: int = 60
 
     # --- scheduler ---------------------------------------------------------
@@ -303,6 +309,12 @@ class Settings(BaseSettings):
     def growth_follow_handles(self) -> tuple[str, ...]:
         return tuple(
             handle.lstrip("@") for handle in self._split_csv(self.growth_follow_targets)
+        )
+
+    @property
+    def viral_handles(self) -> tuple[str, ...]:
+        return tuple(
+            handle.lstrip("@") for handle in self._split_csv(self.viral_target_handles)
         )
 
     @property

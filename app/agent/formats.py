@@ -1,16 +1,14 @@
 """Content-format selection and News Format Router.
 
-Classifies incoming stories into appropriate news formats conforming to the
-India Pulse digital news desk:
-- Breaking News (significant verified events)
-- Straight News (concise reporting without forced hot takes)
-- Political News (attributed statements, institutional decisions)
-- Geopolitics and Defence (Indian strategic relevance)
-- Business and Economy (accurate figures with units)
-- Quote-Led Posts (prominent figure statements with context)
-- Video and Viral Updates (verified visuals)
-- Explainers (why it matters to India)
-- Human Interest, Entertainment and Sports (conversational cadence)
+Classifies incoming stories and viral candidates into all-rounder formats
+for NotANerd (@ssh_bugs):
+- Breaking / Trending (viral events, kalesh, breaking drama)
+- Hot Takes & Sarcastic Burns (spicy opinions, conversational irony)
+- Relatable & Desi Bakchodi (everyday humor, absurd moments)
+- Cricket & Sports (match drama, player heroics/failures)
+- Politics & Policy (netas, debates, institutional absurdities)
+- Business & Pocket Impact (startups, fees, inflation, money)
+- Quote-Led & Video Posts (viral clips, prominent statements)
 """
 
 from __future__ import annotations
