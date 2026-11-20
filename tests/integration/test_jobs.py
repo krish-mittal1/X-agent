@@ -84,4 +84,5 @@ async def test_scheduler_registers_all_jobs(settings, engine) -> None:
         "reply_drafts",
         "memory_consolidation",
         "analytics",
+        "viral_video_repost",
     }
