@@ -250,7 +250,7 @@ async def test_switch_draft_angle_enforces_safety_and_validation():
 
     # Request invalid angle
     req = SwitchAngleRequest(draft_id=10, target_angle="nonexistent_angle")
-    settings = Settings(x_publishing_mode="local_draft")
+    settings = Settings(x_publishing_mode="local_draft", dry_run=True, publishing_enabled=False)
     
     with pytest.raises(HTTPException) as exc_info:
         await switch_draft_angle(req, "admin", mock_session, settings)

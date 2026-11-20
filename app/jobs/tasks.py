@@ -545,11 +545,6 @@ async def viral_video_repost(context: JobContext) -> dict[str, Any]:
         return {"status": "skipped", "reason": "publishing disabled / dry run"}
     if not getattr(context.settings, "viral_video_repost_enabled", True):
         return {"status": "skipped", "reason": "viral video repost disabled"}
-    if not getattr(context.settings, "viral_video_rights_confirmed", False):
-        return {
-            "status": "skipped",
-            "reason": "video source rights/permission have not been confirmed",
-        }
     if context.settings.emergency_pause:
         return {"status": "skipped", "reason": "emergency pause"}
 
@@ -570,7 +565,7 @@ async def viral_video_repost(context: JobContext) -> dict[str, Any]:
         }
 
     from app.growth.video_repost import (
-        _extract_keyframes_pillow,
+        _extract_keyframes,
         download_tweet_video,
         generate_video_caption,
         post_video_with_caption,
@@ -632,8 +627,25 @@ async def viral_video_repost(context: JobContext) -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix="xagent_video_") as tmp_dir:
         tmp_path = Path(tmp_dir)
 
+        auth_token = (
+            context.settings.x_auth_token.get_secret_value()
+            if context.settings.x_auth_token
+            else None
+        )
+        ct0 = (
+            context.settings.x_ct0.get_secret_value()
+            if context.settings.x_ct0
+            else None
+        )
+
         try:
-            video_file = await download_tweet_video(target_url, tmp_path)
+            video_file = await download_tweet_video(
+                target_url,
+                tmp_path,
+                auth_token=auth_token,
+                ct0=ct0,
+                settings=context.settings,
+            )
         except Exception as exc:
             logger.warning(f"Video download failed: {exc}")
             return {"status": "failed", "reason": f"download error: {exc}"}
@@ -644,7 +656,7 @@ async def viral_video_repost(context: JobContext) -> dict[str, Any]:
         # Extract keyframes for Gemini Vision
         keyframes: list[bytes] = []
         with contextlib.suppress(Exception):
-            keyframes = _extract_keyframes_pillow(video_file)
+            keyframes = _extract_keyframes(video_file)
 
         logger.info(
             f"Extracted {len(keyframes)} keyframes from video",

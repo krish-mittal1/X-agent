@@ -26,7 +26,12 @@ from app.publishing.brave_cdp import BraveCDPPublisher
 @pytest.mark.asyncio
 async def test_angle_switching_with_research_report_no_missing_greenlet():
     """Verify explicit async query for ResearchSource avoids MissingGreenlet on detached models."""
-    settings = Settings(x_publishing_mode="local_draft", require_verified_claims=True)
+    settings = Settings(
+        x_publishing_mode="local_draft",
+        require_verified_claims=True,
+        dry_run=True,
+        publishing_enabled=False,
+    )
 
     account = Account(id=1, handle="ssh_bugs", is_active=True)
     report = ResearchReport(
@@ -100,7 +105,12 @@ async def test_angle_switching_with_research_report_no_missing_greenlet():
 @pytest.mark.asyncio
 async def test_angle_switching_without_research_report_succeeds():
     """Verify drafts without research_report_id switch angles safely."""
-    settings = Settings(x_publishing_mode="local_draft", require_verified_claims=True)
+    settings = Settings(
+        x_publishing_mode="local_draft",
+        require_verified_claims=True,
+        dry_run=True,
+        publishing_enabled=False,
+    )
 
     account = Account(id=1, handle="ssh_bugs", is_active=True)
     draft = Draft(
@@ -149,7 +159,12 @@ async def test_angle_switching_without_research_report_succeeds():
 @pytest.mark.asyncio
 async def test_failed_angle_switch_leaves_draft_unmodified():
     """Verify that an invalid or unverified angle rejects and leaves draft state untouched."""
-    settings = Settings(x_publishing_mode="local_draft", require_verified_claims=True)
+    settings = Settings(
+        x_publishing_mode="local_draft",
+        require_verified_claims=True,
+        dry_run=True,
+        publishing_enabled=False,
+    )
 
     account = Account(id=1, handle="ssh_bugs", is_active=True)
     orig_body = "Legitimate original text."

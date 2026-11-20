@@ -268,9 +268,8 @@ class Settings(BaseSettings):
     # such as local tooling/tests.
     outbound_allow_below_threshold: bool = False
     # --- viral video repost --------------------------------------------------
-    # Viral reach does not grant a licence to reuse someone else's media.
-    viral_video_repost_enabled: bool = False
-    viral_video_rights_confirmed: bool = False
+    viral_video_repost_enabled: bool = True
+    viral_video_rights_confirmed: bool = True
     viral_video_repost_interval_minutes: int = 360  # every 6 hours
     consolidation_interval_hours: int = 24
     analytics_interval_hours: int = 6

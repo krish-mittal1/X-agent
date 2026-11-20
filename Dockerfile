@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir \
         --extra-index-url https://download.pytorch.org/whl/cpu \
         -r requirements.txt -r requirements-embeddings.txt && \
     apt-get update && apt-get install -y --no-install-recommends \
-        chromium ca-certificates fonts-liberation && \
+        chromium ca-certificates fonts-liberation ffmpeg && \
     rm -rf /var/lib/apt/lists/* # noqa: ERA001
 
 # Bake the default embedding model into the image so startup needs no download.

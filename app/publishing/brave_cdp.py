@@ -801,20 +801,23 @@ class BraveCDPPublisher(PublishingProvider):
                                 except Exception as attach_err:
                                     raise RuntimeError(
                                         f"video attachment preview not confirmed: {attach_err}"
-                                    )
+                                    ) from attach_err
                         except Exception as vid_err:
                             raise RuntimeError(f"video file attachment failed: {vid_err}") from vid_err
 
                     if not video_attached:
                         raise RuntimeError("video was not attached; refusing text-only fallback")
 
-                    # Click Post button
+                    # Wait for Post button to be enabled (X processes video upload in background)
                     post_button = page.locator(
                         '[data-testid="tweetButton"], [data-testid="tweetButtonInline"]'
                     ).first
-                    await post_button.wait_for(state="visible", timeout=15_000)
-                    if await post_button.is_disabled():
+                    await post_button.wait_for(state="visible", timeout=20_000)
+                    for _ in range(15):
+                        if not await post_button.is_disabled():
+                            break
                         await asyncio.sleep(2.0)
+
                     await post_button.click()
                     await asyncio.sleep(5.0)
 

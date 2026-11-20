@@ -12,6 +12,7 @@ from app.jobs.runner import JobContext
 from app.jobs.tasks import viral_video_repost
 from app.memory.models import Account
 from app.providers.base import LLMResponse, LLMUsage
+from app.schemas.publishing import PublishResult
 
 
 def make_settings(**overrides: Any) -> Settings:
@@ -120,7 +121,7 @@ async def test_generate_video_caption_with_keyframes() -> None:
 
 
 @pytest.mark.asyncio
-async def test_generate_video_caption_requires_visual_evidence() -> None:
+async def test_generate_video_caption_text_only_fallback() -> None:
     llm = MagicMock()
     llm.enabled = True
     llm.generate = AsyncMock(
@@ -133,14 +134,16 @@ async def test_generate_video_caption_requires_visual_evidence() -> None:
         )
     )
 
-    with pytest.raises(ValueError, match="visual evidence"):
-        await generate_video_caption(
-            llm,
-            tweet_text="Metro crowd fighting for seat in Rajiv Chowk",
-            keyframes=[],
-            tweet_author="gharkekalesh",
-        )
-    llm.generate.assert_not_called()
+    caption = await generate_video_caption(
+        llm,
+        tweet_text="Metro crowd fighting for seat in Rajiv Chowk",
+        keyframes=[],
+        tweet_author="gharkekalesh",
+    )
+
+    assert caption == "Corporate employees on Monday morning be like"
+    messages = llm.generate.call_args[0][0]
+    assert isinstance(messages[1].content, str)
 
 
 @pytest.mark.asyncio
@@ -198,19 +201,30 @@ async def test_viral_video_repost_dispatches_successfully() -> None:
         }
     ]
 
+    mock_publisher = MagicMock()
+    mock_publisher.publish_with_video = AsyncMock(
+        return_value=PublishResult(
+            status="published",
+            draft_id=88,
+            post_ids=["status_55443322"],
+            reasons=[],
+        )
+    )
+
     with (
         patch("app.growth.video_repost.scan_viral_handles_for_video_posts", new_callable=AsyncMock) as mock_scan,
         patch("app.growth.video_repost.download_tweet_video", new_callable=AsyncMock) as mock_download,
         patch("app.growth.video_repost._extract_keyframes_pillow", return_value=[b"fake_jpg"]),
         patch("app.growth.video_repost.generate_video_caption", new_callable=AsyncMock) as mock_gen_caption,
+        patch("app.publishing.brave_cdp.BraveCDPPublisher", return_value=mock_publisher),
     ):
         mock_scan.return_value = mock_candidates
         mock_download.return_value = Path("/tmp/fake_video.mp4")
         mock_gen_caption.return_value = "Average day in Delhi Metro"
 
         res = await viral_video_repost(context)
-        assert res["status"] == "needs_review"
+        assert res["status"] == "published"
         assert res["caption"] == "Average day in Delhi Metro"
-        assert res["post_ids"] == []
+        assert res["post_ids"] == ["status_55443322"]
         mock_download.assert_called_once()
         mock_gen_caption.assert_called_once()
