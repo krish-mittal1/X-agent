@@ -261,6 +261,9 @@ class Settings(BaseSettings):
     # unmeasured posts. Keep the fallback available only to explicit callers
     # such as local tooling/tests.
     outbound_allow_below_threshold: bool = False
+    # --- viral video repost --------------------------------------------------
+    viral_video_repost_enabled: bool = True
+    viral_video_repost_interval_minutes: int = 360  # every 6 hours
     consolidation_interval_hours: int = 24
     analytics_interval_hours: int = 6
     job_lease_seconds: int = 600

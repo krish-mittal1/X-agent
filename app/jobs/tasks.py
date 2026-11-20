@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
+import tempfile
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any, Literal
 
 from sqlalchemy import select
@@ -507,6 +510,158 @@ async def outbound_engagement(context: JobContext) -> dict[str, Any]:
         }
 
 
+async def viral_video_repost(context: JobContext) -> dict[str, Any]:
+    """Viral Video Repost Engine.
+
+    Finds high-reach tweets with embedded videos from top Indian viral handles,
+    downloads the video via yt-dlp, extracts keyframes, generates a fresh banger
+    caption via Gemini Vision, and posts the video to @ssh_bugs with the new caption.
+
+    This creates original-looking content that piggybacks on viral video reach
+    without infringing on platform rules (video is downloaded and re-posted as
+    original content, not retweet/quote).
+    """
+    if (
+        not context.settings.publishing_enabled
+        or context.settings.dry_run
+    ):
+        return {"status": "skipped", "reason": "publishing disabled / dry run"}
+    if not getattr(context.settings, "viral_video_repost_enabled", True):
+        return {"status": "skipped", "reason": "viral video repost disabled"}
+    if context.settings.emergency_pause:
+        return {"status": "skipped", "reason": "emergency pause"}
+
+    account = await _default_account(context)
+    if account is None:
+        return {"status": "skipped", "reason": "no active account"}
+
+    # Check daily original post limit
+    now = datetime.now(UTC)
+    async with context.session_factory() as session:
+        posts_today = await PostRepository.count_published_since(
+            session, account.id, now - timedelta(days=1), kind="original"
+        )
+    if posts_today >= context.settings.max_original_posts_per_day:
+        return {
+            "status": "skipped",
+            "reason": f"daily original post limit reached ({posts_today}/{context.settings.max_original_posts_per_day})",
+        }
+
+    from app.growth.video_repost import (
+        _extract_keyframes_pillow,
+        download_tweet_video,
+        generate_video_caption,
+        post_video_with_caption,
+        scan_viral_handles_for_video_posts,
+    )
+
+    target_handles = [
+        "gharkekalesh",
+        "sagarcasm",
+        "GabbbarSingh",
+        "IndianTechGuide",
+        "NewsAlgebraIND",
+        "memenist",
+        "peakbengaluru",
+        "ANI",
+        "BBCHindi",
+        "hindustantimes",
+    ]
+
+    try:
+        candidates = await scan_viral_handles_for_video_posts(
+            context.settings,
+            target_handles,
+            limit_per_handle=2,
+            min_impressions=getattr(context.settings, "outbound_min_impressions", 10_000),
+        )
+    except Exception as exc:
+        logger.warning(f"Video scan failed: {exc}")
+        return {"status": "failed", "reason": f"scan error: {exc}"}
+
+    if not candidates:
+        return {"status": "skipped", "reason": "no viral video candidates found"}
+
+    chosen = candidates[0]
+    target_url = chosen["url"]
+    tweet_text = chosen.get("text", "")
+    tweet_author = chosen.get("author", "")
+
+    logger.info(
+        "Viral video candidate selected",
+        extra={
+            "extra_fields": {
+                "url": target_url,
+                "impressions": chosen.get("impressions", 0),
+                "author": tweet_author,
+            }
+        },
+    )
+
+    # Download video to a temp directory
+    with tempfile.TemporaryDirectory(prefix="xagent_video_") as tmp_dir:
+        tmp_path = Path(tmp_dir)
+
+        try:
+            video_file = await download_tweet_video(target_url, tmp_path)
+        except Exception as exc:
+            logger.warning(f"Video download failed: {exc}")
+            return {"status": "failed", "reason": f"download error: {exc}"}
+
+        if video_file is None:
+            return {"status": "skipped", "reason": "yt-dlp could not download video from tweet"}
+
+        # Extract keyframes for Gemini Vision
+        keyframes: list[bytes] = []
+        with contextlib.suppress(Exception):
+            keyframes = _extract_keyframes_pillow(video_file)
+
+        logger.info(
+            f"Extracted {len(keyframes)} keyframes from video",
+            extra={"extra_fields": {"video_path": str(video_file)}},
+        )
+
+        # Generate fresh caption via Gemini Vision
+        try:
+            caption = await generate_video_caption(
+                context.llm,
+                tweet_text,
+                keyframes,
+                tweet_author=tweet_author,
+            )
+        except Exception as exc:
+            logger.warning(f"Caption generation failed: {exc}")
+            return {"status": "failed", "reason": f"caption generation error: {exc}"}
+
+        logger.info(
+            "Generated video caption",
+            extra={"extra_fields": {"caption": caption, "source": target_url}},
+        )
+
+        # Post with video
+        try:
+            result = await post_video_with_caption(
+                context.settings,
+                context.session_factory,
+                video_file,
+                caption,
+                account.id,
+                target_url,
+            )
+        except Exception as exc:
+            logger.exception(f"Video post dispatch failed: {exc}")
+            return {"status": "failed", "reason": f"post error: {exc}"}
+
+    return {
+        "status": result.get("status", "unknown"),
+        "caption": caption,
+        "source_tweet_url": target_url,
+        "source_author": tweet_author,
+        "keyframes_used": len(keyframes),
+        "post_ids": result.get("post_ids", []),
+    }
+
+
 TASKS = {
     "growth_plan": growth_plan,
     "rss_ingestion": rss_ingestion,
@@ -518,6 +673,7 @@ TASKS = {
     "reply_drafts": reply_drafts,
     "memory_consolidation": consolidation,
     "analytics": analytics,
+    "viral_video_repost": viral_video_repost,
 }
 
 __all__ = ["TASKS"]

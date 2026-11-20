@@ -56,7 +56,7 @@ class ModelCapabilities:
 @dataclass(frozen=True)
 class LLMMessage:
     role: str  # "system" | "user" | "assistant"
-    content: str
+    content: str | list[dict[str, Any]]
 
 
 @dataclass(frozen=True)

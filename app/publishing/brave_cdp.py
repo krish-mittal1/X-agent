@@ -724,6 +724,169 @@ class BraveCDPPublisher(PublishingProvider):
                     with contextlib.suppress(Exception):
                         await browser.close()
 
+    async def publish_with_video(
+        self,
+        draft: Draft,
+        caption: str,
+        video_path: Path,
+    ) -> PublishResult:
+        """Publish a tweet with an attached local video file via Brave CDP.
+
+        Uses the X compose intent URL with text pre-filled, then attaches the
+        video file via the hidden file input, waits for processing, and clicks
+        Post.  Falls back to text-only if video upload fails.
+        """
+        if not self.settings.publishing_enabled or self.settings.dry_run:
+            logger.info("Video publish skipped: dry_run active")
+            return PublishResult(
+                status="simulated",
+                draft_id=draft.id,
+                post_ids=[],
+                reasons=["dry_run active"],
+            )
+
+        brave_exe = resolve_brave_executable()
+        if not brave_exe and not await self.is_cdp_available():
+            return PublishResult(
+                status="failed",
+                draft_id=draft.id,
+                post_ids=[],
+                reasons=["Brave not available"],
+            )
+
+        post_ids: list[str] = []
+        now = self.clock()
+        encoded_text = quote(caption)
+        intent_url = f"https://x.com/intent/post?text={encoded_text}"
+
+        async with async_playwright() as p:
+            browser, context, is_owned_context = await self._get_browser_context(p)
+            try:
+                page = await context.new_page()
+                try:
+                    await page.goto(intent_url, wait_until="domcontentloaded", timeout=35_000)
+                    await asyncio.sleep(2.5)
+
+                    # Attach video via file input
+                    video_attached = False
+                    video_valid = await asyncio.to_thread(
+                        lambda: video_path.exists() and video_path.stat().st_size > 1000
+                    )
+                    if video_valid:
+                        resolved_path = await asyncio.to_thread(lambda: str(video_path.resolve()))
+                        try:
+                            file_input = page.locator(
+                                'input[data-testid="fileInput"], input[type="file"]'
+                            ).first
+                            if await file_input.count() == 0:
+                                with contextlib.suppress(Exception):
+                                    await file_input.wait_for(state="attached", timeout=5_000)
+
+                            if await file_input.count() > 0:
+                                await file_input.set_input_files(resolved_path)
+                                # Wait for X to process the video upload (can take 5-20s)
+                                logger.info(
+                                    "Video file attached; waiting for X to process upload",
+                                    extra={"extra_fields": {"video": str(video_path)}},
+                                )
+                                await asyncio.sleep(8.0)
+                                # Confirm attachment preview appeared
+                                attachment = page.locator(
+                                    '[data-testid="attachments"], [data-testid="mediaAttachment"]'
+                                )
+                                try:
+                                    await attachment.wait_for(state="visible", timeout=20_000)
+                                    video_attached = True
+                                    logger.info("Video attachment confirmed visible")
+                                except Exception:
+                                    logger.warning("Video attachment preview not confirmed; posting text-only")
+                        except Exception as vid_err:
+                            logger.warning(
+                                f"Video file attachment failed ({vid_err}); posting text-only"
+                            )
+
+                    # Click Post button
+                    post_button = page.locator(
+                        '[data-testid="tweetButton"], [data-testid="tweetButtonInline"]'
+                    ).first
+                    await post_button.wait_for(state="visible", timeout=15_000)
+                    if await post_button.is_disabled():
+                        await asyncio.sleep(2.0)
+                    await post_button.click()
+                    await asyncio.sleep(5.0)
+
+                    post_id = await self._confirm_post_id(
+                        page,
+                        caption,
+                        excluded_ids=set(),
+                        include_replies=False,
+                    )
+                    if post_id is None:
+                        raise PublishConfirmationError(
+                            "X did not expose a matching status ID after video post"
+                        )
+                    post_ids.append(post_id)
+
+                    async with self.session_factory() as session:
+                        await PostRepository.create(
+                            session,
+                            account_id=draft.account_id,
+                            x_post_id=post_id,
+                            text=caption,
+                            kind="original",
+                            draft_id=draft.id,
+                            position=0,
+                            published_at=now,
+                        )
+                        await session.commit()
+
+                    logger.info(
+                        "Video post published via Brave",
+                        extra={
+                            "extra_fields": {
+                                "post_id": post_id,
+                                "video_attached": video_attached,
+                                "draft_id": draft.id,
+                            }
+                        },
+                    )
+                    return PublishResult(
+                        status="published",
+                        draft_id=draft.id,
+                        post_ids=post_ids,
+                    )
+
+                except PublishConfirmationError as exc:
+                    reason = str(exc)
+                    await self._mark_needs_reconciliation(draft, reason)
+                    return PublishResult(
+                        status="unknown",
+                        draft_id=draft.id,
+                        post_ids=post_ids,
+                        reasons=[reason],
+                    )
+                except Exception as exc:
+                    logger.exception(
+                        "Error during video post dispatch",
+                        extra={"extra_fields": {"error": str(exc)}},
+                    )
+                    return PublishResult(
+                        status="failed",
+                        draft_id=draft.id,
+                        post_ids=post_ids,
+                        reasons=[f"Video post error: {exc}"],
+                    )
+                finally:
+                    with contextlib.suppress(Exception):
+                        await page.close()
+            finally:
+                if is_owned_context:
+                    with contextlib.suppress(Exception):
+                        await context.close()
+                elif browser:
+                    with contextlib.suppress(Exception):
+                        await browser.close()
+
     async def scan_profile_tweets(self, handle: str, limit: int = 3) -> list[dict[str, Any]]:
         """Scan latest tweets from a profile handle via Brave."""
         clean_handle = handle.strip().lstrip("@")

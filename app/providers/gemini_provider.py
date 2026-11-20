@@ -515,7 +515,9 @@ class GeminiProvider:
         )
         prepared = list(messages)
         if prepared and prepared[0].role == "system":
-            prepared[0] = LLMMessage("system", prepared[0].content + system_suffix)
+            sys_content = prepared[0].content
+            base_content = sys_content if isinstance(sys_content, str) else json.dumps(sys_content)
+            prepared[0] = LLMMessage("system", base_content + system_suffix)
         else:
             prepared.insert(0, LLMMessage("system", system_suffix.strip()))
 

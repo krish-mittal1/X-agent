@@ -34,6 +34,7 @@ def _job_plan(settings: Settings) -> list[tuple[str, int]]:
         ("reply_drafts", settings.reply_draft_interval_minutes * 60),
         ("memory_consolidation", settings.consolidation_interval_hours * 3600),
         ("analytics", settings.analytics_interval_hours * 3600),
+        ("viral_video_repost", getattr(settings, "viral_video_repost_interval_minutes", 360) * 60),
     ]
 
 
