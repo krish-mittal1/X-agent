@@ -162,6 +162,18 @@ def test_viral_candidates_fallback_when_none_meet_threshold() -> None:
     assert ranked[1]["tweet_id"] == "10"
 
 
+def test_viral_candidates_strict_mode_rejects_low_or_unmeasured_posts() -> None:
+    ranked = rank_viral_candidates(
+        [
+            {"tweet_id": "10", "text": "low", "impressions": 699_999},
+            {"tweet_id": "20", "text": "unknown"},
+        ],
+        700_000,
+        allow_below_threshold=False,
+    )
+    assert ranked == []
+
+
 @pytest.mark.asyncio
 async def test_create_engagement_draft_operator_approved() -> None:
     """Verifies that operator_approved sets DRAFT_APPROVED and passes verification."""

@@ -400,7 +400,13 @@ async def outbound_engagement(context: JobContext) -> dict[str, Any]:
         return {"status": "failed", "reason": f"handle scan error: {exc}"}
 
     if not candidates:
-        return {"status": "skipped", "reason": "no candidates found from scanned handles"}
+        return {
+            "status": "skipped",
+            "reason": (
+                "no candidates met the observed-impressions threshold "
+                f"({context.settings.outbound_min_impressions:,})"
+            ),
+        }
 
     # Filter out tweets we already engaged with
     async with context.session_factory() as session:

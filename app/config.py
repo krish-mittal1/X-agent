@@ -257,6 +257,10 @@ class Settings(BaseSettings):
     outbound_engagement_interval_minutes: int = 240
     outbound_engagement_enabled: bool = True
     outbound_min_impressions: int = 10_000
+    # Autonomous engagement must not silently fall back to low-reach or
+    # unmeasured posts. Keep the fallback available only to explicit callers
+    # such as local tooling/tests.
+    outbound_allow_below_threshold: bool = False
     consolidation_interval_hours: int = 24
     analytics_interval_hours: int = 6
     job_lease_seconds: int = 600

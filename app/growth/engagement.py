@@ -31,7 +31,10 @@ logger = get_logger(__name__)
 
 
 def rank_viral_candidates(
-    candidates: list[dict[str, Any]], minimum_impressions: int
+    candidates: list[dict[str, Any]],
+    minimum_impressions: int,
+    *,
+    allow_below_threshold: bool = True,
 ) -> list[dict[str, Any]]:
     """Keep candidates with observed public reach and rank strongest first."""
     valid = [
@@ -44,8 +47,9 @@ def rank_viral_candidates(
         for candidate in valid
         if int(candidate.get("impressions") or 0) >= minimum_impressions
     ]
-    # If any meet the threshold, prioritize them; otherwise fall back to all valid candidates
-    pool = eligible if eligible else valid
+    # Autonomous callers opt out of the historical fallback. A missing metric
+    # is not evidence of reach and must never be treated as viral.
+    pool = eligible if eligible or not allow_below_threshold else valid
     return sorted(
         pool,
         key=lambda candidate: (
@@ -319,4 +323,8 @@ class EngagementService:
                 continue
             tweets = await self.publisher.scan_profile_tweets(clean, limit=limit_per_handle)
             candidates.extend(tweets)
-        return rank_viral_candidates(candidates, self.settings.outbound_min_impressions)
+        return rank_viral_candidates(
+            candidates,
+            self.settings.outbound_min_impressions,
+            allow_below_threshold=self.settings.outbound_allow_below_threshold,
+        )
