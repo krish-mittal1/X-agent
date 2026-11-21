@@ -113,10 +113,10 @@ class Settings(BaseSettings):
     dry_run: bool = True  # simulate publishing instead of calling X
     ai_reply_approval_obtained: bool = False  # prior written approval from X
     ai_reply_publishing_enabled: bool = False
-    max_original_posts_per_day: int = 3
-    max_replies_per_day: int = 5
-    max_posts_per_run: int = 1
-    min_hours_between_posts: float = 3.5
+    max_original_posts_per_day: int = 12
+    max_replies_per_day: int = 20
+    max_posts_per_run: int = 2
+    min_hours_between_posts: float = 0.5
     publish_min_score: float = 0.5
 
     # --- research ----------------------------------------------------------
@@ -255,12 +255,12 @@ class Settings(BaseSettings):
 
     # --- scheduler ---------------------------------------------------------
     scheduler_enabled: bool = False
-    ingest_interval_minutes: int = 60
-    rank_interval_minutes: int = 120
-    draft_interval_minutes: int = 240
-    publish_interval_minutes: int = 60
-    reply_draft_interval_minutes: int = 120
-    outbound_engagement_interval_minutes: int = 240
+    ingest_interval_minutes: int = 30
+    rank_interval_minutes: int = 45
+    draft_interval_minutes: int = 45
+    publish_interval_minutes: int = 30
+    reply_draft_interval_minutes: int = 60
+    outbound_engagement_interval_minutes: int = 45
     outbound_engagement_enabled: bool = True
     outbound_min_impressions: int = 10_000
     # Autonomous engagement must not silently fall back to low-reach or
@@ -270,7 +270,8 @@ class Settings(BaseSettings):
     # --- viral video repost --------------------------------------------------
     viral_video_repost_enabled: bool = True
     viral_video_rights_confirmed: bool = True
-    viral_video_repost_interval_minutes: int = 360  # every 6 hours
+    viral_video_repost_interval_minutes: int = 90  # every 1.5 hours
+    max_video_reposts_per_day: int = 8
     consolidation_interval_hours: int = 24
     analytics_interval_hours: int = 6
     job_lease_seconds: int = 600

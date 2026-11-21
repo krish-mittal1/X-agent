@@ -116,7 +116,10 @@ def compute_allowance(
         link_share = settings.growth_link_share
         notes.append("account age limit elapsed; running at configured volume")
 
-    posts_per_day = _clamp(posts, settings.posts_per_day_min, settings.posts_per_day_max)
+    if age_days < established_days:
+        posts_per_day = int(min(posts, settings.posts_per_day_max))
+    else:
+        posts_per_day = int(_clamp(posts, settings.posts_per_day_min, settings.posts_per_day_max))
     return GrowthAllowance(
         age_days=age_days,
         stage=stage,

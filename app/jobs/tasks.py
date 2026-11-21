@@ -607,7 +607,33 @@ async def viral_video_repost(context: JobContext) -> dict[str, Any]:
     if not candidates:
         return {"status": "skipped", "reason": "no viral video candidates found"}
 
-    chosen = candidates[0]
+    # Filter out tweets we already reposted or engaged with
+    async with context.session_factory() as session:
+        all_draft_reports = (
+            await session.scalars(
+                select(Draft.policy_report).where(
+                    Draft.account_id == account.id,
+                )
+            )
+        ).all()
+        already_used: set[str] = set()
+        for report in all_draft_reports:
+            if isinstance(report, dict):
+                src = report.get("source_tweet_url")
+                if src:
+                    already_used.add(src)
+                tid = report.get("source_tweet_id") or report.get("target_post_id")
+                if tid:
+                    already_used.add(str(tid))
+
+    fresh_candidates = [
+        c for c in candidates
+        if c.get("url") not in already_used and str(c.get("tweet_id", "")) not in already_used
+    ]
+    if not fresh_candidates:
+        return {"status": "skipped", "reason": "all viral video candidates already reposted"}
+
+    chosen = fresh_candidates[0]
     target_url = chosen["url"]
     tweet_text = chosen.get("text", "")
     tweet_author = chosen.get("author", "")
