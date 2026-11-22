@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 
@@ -9,6 +9,7 @@ from app.jobs.scheduler import shutdown_scheduler, start_scheduler
 from app.memory import database as db_module
 from app.memory.database import session_scope
 from app.memory.models import JobRun
+from app.memory.repositories import JobRepository
 
 
 def make_context(settings) -> JobContext:  # type: ignore[no-untyped-def]
@@ -65,6 +66,43 @@ async def test_job_failure_is_recorded_not_raised(settings, engine) -> None:
     async with session_scope() as session:
         run = await session.scalar(select(JobRun).where(JobRun.job_name == "failing_job"))
     assert run is not None and run.status == "failed"
+
+
+async def test_stale_job_runs_are_reconciled(settings, engine) -> None:
+    now = datetime.now(UTC)
+    async with session_scope() as session:
+        session.add_all(
+            [
+                JobRun(
+                    job_name="stale_job",
+                    run_key="stale_job:1",
+                    status="running",
+                    started_at=now - timedelta(minutes=31),
+                ),
+                JobRun(
+                    job_name="fresh_job",
+                    run_key="fresh_job:1",
+                    status="running",
+                    started_at=now - timedelta(minutes=5),
+                ),
+            ]
+        )
+
+    async with session_scope() as session:
+        count = await JobRepository.interrupt_stale(
+            session,
+            started_before=now - timedelta(minutes=30),
+        )
+    assert count == 1
+
+    async with session_scope() as session:
+        runs = {
+            run.job_name: run
+            for run in (await session.scalars(select(JobRun))).all()
+        }
+    assert runs["stale_job"].status == "interrupted"
+    assert runs["stale_job"].finished_at is not None
+    assert runs["fresh_job"].status == "running"
 
 
 async def test_scheduler_registers_all_jobs(settings, engine) -> None:

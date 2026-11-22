@@ -414,7 +414,7 @@ async def outbound_engagement(context: JobContext) -> dict[str, Any]:
     ]
 
     try:
-        candidates = await service.scan_handles_for_candidates(target_handles, limit_per_handle=2)
+        candidates = await service.scan_handles_for_candidates(target_handles, limit_per_handle=4)
     except Exception as exc:
         logger.warning(f"Failed scanning handles for candidates: {exc}")
         return {"status": "failed", "reason": f"handle scan error: {exc}"}

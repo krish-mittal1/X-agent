@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -16,6 +17,7 @@ from app.jobs.tasks import TASKS
 from app.logging_config import get_logger
 from app.memory.database import get_session_factory
 from app.memory.embeddings import build_embedding_provider
+from app.memory.repositories import JobRepository
 from app.providers.factory import LLMService, build_provider
 from app.publishing.x_client import XClient
 
@@ -48,6 +50,7 @@ def _timezone(settings: Settings) -> Any:
 
 
 async def start_scheduler(settings: Settings) -> AsyncIOScheduler:
+    await _reconcile_stale_job_runs()
     try:
         embedder = build_embedding_provider(settings)
     except Exception as exc:
@@ -107,6 +110,24 @@ async def start_scheduler(settings: Settings) -> AsyncIOScheduler:
     if settings.llm_validate_model_on_startup and llm.enabled:
         asyncio.create_task(_validate_model(llm))
     return scheduler
+
+
+async def _reconcile_stale_job_runs() -> None:
+    """Mark jobs abandoned by a previous process as interrupted.
+
+    PostgreSQL advisory locks disappear when the old process disconnects, but
+    its audit row remains ``running``. Without reconciliation the health monitor
+    stays unhealthy forever even though current jobs are executing normally.
+    """
+    cutoff = datetime.now(UTC) - timedelta(minutes=30)
+    async with get_session_factory()() as session:
+        count = await JobRepository.interrupt_stale(session, started_before=cutoff)
+        if count:
+            await session.commit()
+            logger.warning(
+                "reconciled stale scheduled job runs",
+                extra={"extra_fields": {"count": count}},
+            )
 
 
 async def _startup_warmup(context: JobContext, settings: Settings) -> None:

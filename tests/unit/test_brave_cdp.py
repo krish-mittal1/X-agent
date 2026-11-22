@@ -10,6 +10,7 @@ from app.config import Settings
 from app.memory.models import Draft
 from app.publishing.brave_cdp import (
     BraveCDPPublisher,
+    _browser_session_lock,
     metrics_from_aria_labels,
     parse_visible_count,
 )
@@ -96,6 +97,11 @@ def test_x_visible_counts_and_metrics_are_parsed() -> None:
         "replies": 315,
         "reposts": 2_000,
     }
+
+
+@pytest.mark.asyncio
+async def test_browser_session_lock_is_shared_within_event_loop() -> None:
+    assert _browser_session_lock() is _browser_session_lock()
 
 
 @pytest.mark.asyncio

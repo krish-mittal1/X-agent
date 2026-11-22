@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote, urlparse
+from weakref import WeakKeyDictionary
 
 import httpx
 from playwright.async_api import async_playwright
@@ -27,6 +28,22 @@ from app.schemas.publishing import PolicyDecision, PublishResult
 logger = get_logger(__name__)
 
 DEFAULT_CDP_ENDPOINT = "http://127.0.0.1:9222"
+
+# Every browser action uses the same persistent X profile. APScheduler can run
+# publishing, engagement, and video discovery at the same time, but Chromium
+# rejects concurrent owners of one profile (and can corrupt it if forced).
+# Keep one lock per event loop so separate publisher instances still serialize
+# their complete browser sessions without leaking a lock across test loops.
+_BROWSER_SESSION_LOCKS: WeakKeyDictionary[Any, asyncio.Lock] = WeakKeyDictionary()
+
+
+def _browser_session_lock() -> asyncio.Lock:
+    loop = asyncio.get_running_loop()
+    lock = _BROWSER_SESSION_LOCKS.get(loop)
+    if lock is None:
+        lock = asyncio.Lock()
+        _BROWSER_SESSION_LOCKS[loop] = lock
+    return lock
 
 
 def parse_visible_count(value: str) -> int | None:
@@ -408,7 +425,7 @@ class BraveCDPPublisher(PublishingProvider):
         now = self.clock()
         reply_parent = draft.in_reply_to_post_id if draft.kind == "reply" else None
 
-        async with async_playwright() as p:
+        async with _browser_session_lock(), async_playwright() as p:
             browser, context, is_owned_context = await self._get_browser_context(p)
 
             try:
@@ -618,7 +635,7 @@ class BraveCDPPublisher(PublishingProvider):
         if not brave_exe and not await self.is_cdp_available():
             return {"status": "failed", "url": target_post_url, "reason": "Brave not available"}
 
-        async with async_playwright() as p:
+        async with _browser_session_lock(), async_playwright() as p:
             browser, context, is_owned_context = await self._get_browser_context(p)
             try:
                 page = await context.new_page()
@@ -656,7 +673,7 @@ class BraveCDPPublisher(PublishingProvider):
         if not brave_exe and not await self.is_cdp_available():
             return {"status": "failed", "url": target_post_url, "reason": "Brave not available"}
 
-        async with async_playwright() as p:
+        async with _browser_session_lock(), async_playwright() as p:
             browser, context, is_owned_context = await self._get_browser_context(p)
             try:
                 page = await context.new_page()
@@ -684,7 +701,7 @@ class BraveCDPPublisher(PublishingProvider):
         """Fetch author and text of a tweet via Brave."""
         if not await self.is_cdp_available() and not resolve_brave_executable():
             return {"url": tweet_url, "author": "", "text": "", "tweet_id": ""}
-        async with async_playwright() as p:
+        async with _browser_session_lock(), async_playwright() as p:
             browser, context, is_owned_context = await self._get_browser_context(p)
             try:
                 page = await context.new_page()
@@ -899,7 +916,7 @@ class BraveCDPPublisher(PublishingProvider):
         profile_url = f"https://x.com/{clean_handle}"
         if not await self.is_cdp_available() and not resolve_brave_executable():
             return []
-        async with async_playwright() as p:
+        async with _browser_session_lock(), async_playwright() as p:
             browser, context, is_owned_context = await self._get_browser_context(p)
             try:
                 page = await context.new_page()

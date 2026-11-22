@@ -349,3 +349,32 @@ class JobRepository:
         run.status = status
         run.finished_at = datetime.now(UTC)
         run.details = details or {}
+
+    @staticmethod
+    async def interrupt_stale(
+        session: AsyncSession,
+        *,
+        started_before: datetime,
+    ) -> int:
+        """Close abandoned run markers left behind by a stopped process."""
+        runs = list(
+            (
+                await session.scalars(
+                    select(JobRun)
+                    .where(
+                        JobRun.status == "running",
+                        JobRun.started_at < started_before,
+                    )
+                    .with_for_update(skip_locked=True)
+                )
+            ).all()
+        )
+        finished_at = datetime.now(UTC)
+        for run in runs:
+            run.status = "interrupted"
+            run.finished_at = finished_at
+            run.details = {
+                **(run.details or {}),
+                "reason": "reconciled stale run marker after scheduler restart",
+            }
+        return len(runs)
