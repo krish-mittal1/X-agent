@@ -221,15 +221,6 @@ class RssAdapter:
 
         if not content.strip():
             return None
-        if (
-            not self.settings.political_content_enabled
-            and is_political_content(title, content)
-        ):
-            logger.info(
-                "Fetched article rejected by non-political topic boundary",
-                extra={"extra_fields": {"title": title[:160], "url": url}},
-            )
-            return None
         if len(content.strip()) >= 20 and fetch_status == "summary_only":
             fetch_status = "ok"
         profile = classify_source("rss", url)

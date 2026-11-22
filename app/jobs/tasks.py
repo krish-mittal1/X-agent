@@ -107,7 +107,7 @@ async def drafting(context: JobContext) -> dict[str, Any]:
             political = [
                 item
                 for item in candidates
-                if is_political_content(item.title, item.excerpt, item.content)
+                if is_political_content(item.title, item.excerpt)
             ]
             if political:
                 await SourceRepository.mark_processed(
