@@ -32,6 +32,18 @@ from app.schemas.publishing import PublishResult
 logger = get_logger(__name__)
 
 
+def rotate_handle_batch(
+    handles: list[str], *, batch_size: int, rotation_index: int
+) -> list[str]:
+    """Return a deterministic rotating slice so each configured author is scanned."""
+    clean = [handle.strip().lstrip("@") for handle in handles if handle.strip().lstrip("@")]
+    if not clean:
+        return []
+    count = max(1, min(len(clean), int(batch_size)))
+    start = (max(0, int(rotation_index)) * count) % len(clean)
+    return [clean[(start + offset) % len(clean)] for offset in range(count)]
+
+
 def rank_viral_candidates(
     candidates: list[dict[str, Any]],
     minimum_impressions: int,

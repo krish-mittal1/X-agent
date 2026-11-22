@@ -315,6 +315,7 @@ VOICE & TONE:
 - Max 180 characters. Zero hashtags. Zero spam emojis (at most 1 emoji if it adds comic value).
 - Treat the video as if YOU saw it happen live or just stumbled upon it.
 - NEVER copy the original tweet's text or author.
+- Never create party-political, election, government-versus-opposition, geopolitical, or defence commentary.
 - BANNED CLICHES: "Watch till the end", "Wait for it", "This is insane", "Can't believe this", "Look at this".
 
 EXAMPLES OF THE DESIRED VIBE:
@@ -554,41 +555,76 @@ async def post_video_with_caption(
     source_tweet_url: str,
 ) -> dict[str, Any]:
     """Post a downloaded video with a fresh caption via Brave CDP."""
-    from app.memory.models import DRAFT_APPROVED
+    from sqlalchemy import select
+
+    from app.memory.models import DRAFT_APPROVED, Draft, Post
     from app.memory.repositories import DraftRepository
     from app.publishing.brave_cdp import BraveCDPPublisher
 
     publisher = BraveCDPPublisher(settings, session_factory)
 
+    source_match = re.search(r"/status/(\d+)", source_tweet_url)
+    source_tweet_id = source_match.group(1) if source_match else ""
+    idempotency_key = f"video_repost:{source_tweet_url}"
+
     async with session_factory() as session:
-        draft = await DraftRepository.create(
-            session,
-            account_id=account_id,
-            kind="original",
-            status=DRAFT_APPROVED,
-            idempotency_key=f"video_repost:{source_tweet_url}:{int(time.time())}",
-            topic=f"Video repost from {source_tweet_url}",
-            title="Viral Video Repost",
-            body=caption,
-            thread_parts=[],
-            tone="bakchodi",
-            rationale="Viral video repost with fresh AI-generated caption",
-            source_document_ids=[],
-            verification_report={
-                "passed": True,
-                "operator_approved": True,
-                "claims": [],
-                "unverified_facts": 0,
-                "manual_review_required": False,
-            },
-            policy_report={
-                "source": "video_repost_engine",
-                "source_tweet_url": source_tweet_url,
-                "operator_approved": True,
-                "zero_cost": True,
-                "video_path": str(video_path),
-            },
+        draft = await session.scalar(
+            select(Draft)
+            .where(
+                Draft.account_id == account_id,
+                Draft.policy_report["source_tweet_url"].astext == source_tweet_url,
+            )
+            .order_by(Draft.created_at.desc())
         )
+        if draft is not None:
+            existing_posts = list(
+                (
+                    await session.scalars(
+                        select(Post).where(Post.draft_id == draft.id).order_by(Post.position)
+                    )
+                ).all()
+            )
+            if existing_posts:
+                return {
+                    "status": "already_published",
+                    "draft_id": draft.id,
+                    "post_ids": [post.x_post_id for post in existing_posts if post.x_post_id],
+                    "caption": draft.body,
+                    "source_tweet_url": source_tweet_url,
+                }
+            draft.status = DRAFT_APPROVED
+            draft.body = caption
+            draft.error = None
+        else:
+            draft = await DraftRepository.create(
+                session,
+                account_id=account_id,
+                kind="original",
+                status=DRAFT_APPROVED,
+                idempotency_key=idempotency_key,
+                topic=f"Video repost from {source_tweet_url}",
+                title="Viral Video Repost",
+                body=caption,
+                thread_parts=[],
+                tone="bakchodi",
+                rationale="Viral video repost with fresh AI-generated caption",
+                source_document_ids=[],
+                verification_report={
+                    "passed": True,
+                    "operator_approved": True,
+                    "claims": [],
+                    "unverified_facts": 0,
+                    "manual_review_required": False,
+                },
+                policy_report={
+                    "source": "video_repost_engine",
+                    "source_tweet_url": source_tweet_url,
+                    "source_tweet_id": source_tweet_id,
+                    "operator_approved": True,
+                    "zero_cost": True,
+                    "video_path": str(video_path),
+                },
+            )
         await session.commit()
 
     result = await publisher.publish_with_video(draft, caption, video_path)

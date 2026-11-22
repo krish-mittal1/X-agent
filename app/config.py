@@ -121,14 +121,16 @@ class Settings(BaseSettings):
 
     # --- research ----------------------------------------------------------
     rss_feeds: str = (
-        "https://inc42.com/feed/,"
-        "https://economictimes.indiatimes.com/tech/technology/rssfeeds/13357270.cms,"
-        "https://www.livemint.com/rss/technology,"
-        "https://www.moneycontrol.com/rss/technology.xml,"
-        "https://timesofindia.indiatimes.com/rssfeeds/66949542.cms,"
+        "https://indianexpress.com/section/trending/feed/,"
         "https://indianexpress.com/section/technology/feed/,"
-        "https://www.livemint.com/rss/companies,"
-        "https://www.moneycontrol.com/rss/business.xml"
+        "https://indianexpress.com/section/sports/feed/,"
+        "https://indianexpress.com/section/entertainment/feed/,"
+        "https://indianexpress.com/section/lifestyle/feed/,"
+        "https://indianexpress.com/section/good-news/feed/,"
+        "https://indianexpress.com/section/business/feed/,"
+        "https://indianexpress.com/section/education/feed/,"
+        "https://economictimes.indiatimes.com/tech/technology/rssfeeds/13357270.cms,"
+        "https://researchmatters.in/rss.xml"
     )
     github_repositories: str = ""
     github_search_queries: str = ""
@@ -173,6 +175,7 @@ class Settings(BaseSettings):
     verification_stale_days: int = 14
     verification_min_quote_chars: int = 20
     allow_trending_topics: bool = False
+    political_content_enabled: bool = False
     # Applies to factual formats only: shitpost/relatable joke framing is allowed.
     block_first_person_experience: bool = True
     max_thread_parts: int = 4
@@ -187,8 +190,8 @@ class Settings(BaseSettings):
     # the model cannot turn a factual story into an opinion.  Comedic formats
     # are explicitly limited to source-grounded observations and satire.
     post_format_mix: str = (
-        "hot_take:0.25,relatable:0.20,shitpost:0.15,breaking_news:0.15,"
-        "straight_news:0.10,explainer:0.10,quote_led:0.05"
+        "hot_take:0.20,relatable:0.20,shitpost:0.15,human_interest_sports:0.15,"
+        "video_viral:0.10,business_economy:0.08,explainer:0.07,quote_led:0.05"
     )
     banned_phrases: str = (
         "as an ai language model,"
@@ -263,13 +266,15 @@ class Settings(BaseSettings):
     outbound_engagement_interval_minutes: int = 45
     outbound_engagement_enabled: bool = True
     outbound_min_impressions: int = 10_000
+    outbound_handles_per_run: int = 8
+    outbound_author_cooldown_hours: int = 72
     # Autonomous engagement must not silently fall back to low-reach or
     # unmeasured posts. Keep the fallback available only to explicit callers
     # such as local tooling/tests.
     outbound_allow_below_threshold: bool = False
     # --- viral video repost --------------------------------------------------
     viral_video_repost_enabled: bool = True
-    viral_video_rights_confirmed: bool = True
+    viral_video_rights_confirmed: bool = False
     viral_video_repost_interval_minutes: int = 90  # every 1.5 hours
     max_video_reposts_per_day: int = 8
     consolidation_interval_hours: int = 24

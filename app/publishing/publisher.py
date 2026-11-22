@@ -17,6 +17,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.config import Settings
+from app.content_policy import is_political_content
 from app.logging_config import get_logger
 from app.memory.database import get_engine
 from app.memory.embeddings import EmbeddingProvider
@@ -133,6 +134,25 @@ class Publisher:
             account = await session.get(Account, draft.account_id)
             existing = await self._existing_posts(session, draft_id)
             parts = self._parts(draft)
+            if (
+                not self.settings.political_content_enabled
+                and is_political_content(draft.title, draft.topic, *parts)
+            ):
+                draft.status = DRAFT_BLOCKED
+                draft.error = "political content is disabled for this all-rounder account"
+                await AuditRepository.log(
+                    session,
+                    action="publish_original",
+                    outcome="blocked",
+                    account_id=draft.account_id,
+                    details={"draft_id": draft.id, "reason": draft.error},
+                )
+                await session.commit()
+                return PublishResult(
+                    status="blocked",
+                    draft_id=draft.id,
+                    reasons=[draft.error],
+                )
             if len(existing) >= len(parts):
                 return PublishResult(
                     status="already_published",

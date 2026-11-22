@@ -11,6 +11,7 @@ import feedparser
 import httpx
 
 from app.config import Settings
+from app.content_policy import is_political_content
 from app.ingestion.base import AdapterResult, SourceAdapterError
 from app.ingestion.extract import (
     clean_excerpt,
@@ -181,6 +182,15 @@ class RssAdapter:
         title = str(entry.get("title", "") or "").strip()
         raw_html = _entry_html(entry)
         summary_text, _ = extract_text(raw_html)
+        if (
+            not self.settings.political_content_enabled
+            and is_political_content(title, summary_text)
+        ):
+            logger.info(
+                "RSS entry rejected by non-political topic boundary",
+                extra={"extra_fields": {"title": title[:160], "url": url}},
+            )
+            return None
         content = summary_text
         image_url = _entry_image(entry)
         article_fetched = False
@@ -210,6 +220,15 @@ class RssAdapter:
                 fetch_status = "summary_only"
 
         if not content.strip():
+            return None
+        if (
+            not self.settings.political_content_enabled
+            and is_political_content(title, content)
+        ):
+            logger.info(
+                "Fetched article rejected by non-political topic boundary",
+                extra={"extra_fields": {"title": title[:160], "url": url}},
+            )
             return None
         if len(content.strip()) >= 20 and fetch_status == "summary_only":
             fetch_status = "ok"

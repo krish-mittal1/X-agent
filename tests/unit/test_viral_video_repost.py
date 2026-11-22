@@ -56,6 +56,16 @@ async def test_viral_video_repost_skips_when_feature_disabled() -> None:
 
 
 @pytest.mark.asyncio
+async def test_viral_video_repost_requires_confirmed_reuse_rights() -> None:
+    settings = make_settings(viral_video_rights_confirmed=False)
+    context = MagicMock(spec=JobContext)
+    context.settings = settings
+    res = await viral_video_repost(context)
+    assert res["status"] == "skipped"
+    assert "rights" in res["reason"]
+
+
+@pytest.mark.asyncio
 async def test_viral_video_repost_skips_when_daily_limit_reached() -> None:
     settings = make_settings(max_original_posts_per_day=2)
     context = MagicMock(spec=JobContext)
@@ -168,7 +178,7 @@ async def test_viral_video_repost_dispatches_successfully() -> None:
             sql = str(stmt).lower()
             if "accounts" in sql:
                 return fake_account
-            if "count" in sql:
+            if "count(" in sql:
                 return 0
             return None
 

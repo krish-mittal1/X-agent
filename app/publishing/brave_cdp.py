@@ -761,6 +761,20 @@ class BraveCDPPublisher(PublishingProvider):
                 post_ids=[],
                 reasons=["dry_run active"],
             )
+        if self.settings.emergency_pause:
+            return PublishResult(
+                status="blocked",
+                draft_id=draft.id,
+                post_ids=[],
+                reasons=["emergency pause active"],
+            )
+        if not self.settings.viral_video_rights_confirmed:
+            return PublishResult(
+                status="blocked",
+                draft_id=draft.id,
+                post_ids=[],
+                reasons=["video download/reupload requires confirmed reuse rights"],
+            )
 
         brave_exe = resolve_brave_executable()
         if not brave_exe and not await self.is_cdp_available():
@@ -861,6 +875,14 @@ class BraveCDPPublisher(PublishingProvider):
                             position=0,
                             published_at=now,
                         )
+                        db_draft = await session.get(Draft, draft.id)
+                        if db_draft is not None:
+                            db_draft.status = DRAFT_PUBLISHED
+                            db_draft.published_at = now
+                            db_draft.error = None
+                            policy = dict(db_draft.policy_report or {})
+                            policy["published_via"] = "brave_cdp_video"
+                            db_draft.policy_report = policy
                         await session.commit()
 
                     logger.info(
@@ -893,6 +915,12 @@ class BraveCDPPublisher(PublishingProvider):
                         "Error during video post dispatch",
                         extra={"extra_fields": {"error": str(exc)}},
                     )
+                    async with self.session_factory() as session:
+                        db_draft = await session.get(Draft, draft.id)
+                        if db_draft is not None:
+                            db_draft.status = "failed"
+                            db_draft.error = str(exc)[:4000]
+                            await session.commit()
                     return PublishResult(
                         status="failed",
                         draft_id=draft.id,

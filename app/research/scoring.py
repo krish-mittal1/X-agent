@@ -27,36 +27,33 @@ from app.schemas.research import (
 )
 
 _TECH_TERMS = {
-    # India Core, Politics & Institutions
+    # India Core & Daily Life
     "india", "indian", "delhi", "bengaluru", "mumbai", "hyderabad", "chennai", "kolkata",
-    "modi", "bjp", "congress", "rahul gandhi", "aap", "opposition", "india bloc", "nda",
-    "parliament", "lok sabha", "rajya sabha", "supreme court", "high court", "cabinet",
-    "election", "assembly", "poll", "cm", "chief minister", "minister", "governor", "babus",
     # Economy, Finance, Taxes & Regulation
     "rbi", "sebi", "gdp", "inflation", "gst", "rupee", "taxation", "budget", "fiscal",
     "trade", "export", "import", "tariff", "manufacturing", "economy", "reform", "market",
     # Indian Tech, AI, Startups, Consumer Giants & Quick Commerce (Competitor Niche)
     "tech", "startup", "founder", "ai", "artificial intelligence", "ai agent", "semiconductor", "fab",
     "upi", "ondc", "aadhaar", "dpi", "fintech", "saas", "deeptech", "unicorn", "funding", "valuation",
-    "isro", "drdo", "space", "defense", "missile", "satellite", "ev", "electronics",
+    "isro", "space", "science", "satellite", "ev", "electronics", "gaming", "gadgets",
     "zomato", "swiggy", "blinkit", "zepto", "quick commerce", "jio", "airtel", "vi", "tariff hike",
     "apple", "foxconn", "tata electronics", "iphone", "nvidia", "deepfake",
     "ola", "ola electric", "ather", "bhavish", "tcs", "infosys", "wipro", "fresher salary",
-    # Infrastructure, Giants & High-Stakes Domestic Events
+    # Sports, Entertainment, Lifestyle & Infrastructure
+    "cricket", "ipl", "bcci", "football", "hockey", "badminton", "chess", "olympics",
+    "bollywood", "cinema", "music", "concert", "streaming", "food", "travel",
+    "fitness", "fashion", "pets", "cars", "bikes", "college", "exams", "relationships",
     "railways", "vande bharat", "bullet train", "expressway", "infra", "port", "airport", "adani", "reliance",
-    "tata", "bridge", "tunnel", "chenab", "metro", "bill", "ordinance", "protest", "strike", "cbi", "ed", "scam",
-    "corruption", "probe", "arrest", "bail", "verdict", "controversy", "border", "lac",
+    "tata", "bridge", "tunnel", "chenab", "metro", "scam", "controversy", "viral", "jugaad",
 }
 _ACTIONABLE_TERMS = {
-    "breaking", "just in", "update", "shocking", "big", "crackdown", "arrest", "arrested",
-    "raid", "raids", "cbi", "ed", "scam", "fraud", "supreme court", "high court", "pulls up",
-    "slams", "warning", "banned", "bans", "directive", "penalty", "seized", "crore", "crores",
-    "scandal", "probe", "crash", "crashes", "protest", "strike", "resigns", "suspended",
-    "digital arrest", "cyber fraud", "consumer court", "summons", "clash", "fired", "controversy",
-    "tariff", "ban", "statement", "talks", "vote", "election", "resolution", "military", "trade",
+    "breaking", "just in", "update", "shocking", "big", "scam", "fraud", "warning",
+    "banned", "bans", "penalty", "crore", "crores", "scandal", "crash", "crashes",
+    "digital arrest", "cyber fraud", "consumer court", "clash", "fired", "controversy",
+    "tariff", "ban", "record", "launch", "wins", "defeats", "viral", "trend", "trade",
 }
 _VIRAL_CONTROVERSY_TERMS = {
-    # Spicy statements, political fights & sharp digs
+    # Spicy statements & sharp digs
     "slams", "hits back", "sparks row", "backlash", "spat", "furious", "outrage",
     "accuses", "clash", "faceoff", "mock", "mocks", "takes dig", "dig at", "shuts down",
     "unfiltered", "revolt", "boycott", "allegations", "warns", "defiant", "walkout",
@@ -78,7 +75,7 @@ _VIRAL_CONTROVERSY_TERMS = {
     "kunal kamra", "bhavish aggarwal", "ev fire",
     # Sensational busts & celebrity/influencer drama
     "betting app", "mahadev app", "influencer raided", "money laundering", "hawala",
-    "ed summons", "cbi summons", "lookout notice", "fir lodged",
+    "lookout notice", "fir lodged",
 }
 _BORING_TERMS = {
     "annual report", "panel discussion", "webinar", "seminar", "workshop", "proceedings adjourned",
@@ -138,8 +135,11 @@ def technical_relevance_signal(text: str, interests: tuple[str, ...]) -> float:
     interest_hits = _term_hits(lowered, {i.lower() for i in interests})
     interest_score = min(1.0, interest_hits / 3.0)
     density = min(1.0, _term_hits(lowered, _TECH_TERMS) / 6.0)
-    # Priority boost for domestic Indian affairs, politics, tech, and institutions
-    india_keywords = ("india", "indian", "delhi", "modi", "bengaluru", "bjp", "congress", "lok sabha", "isro", "rbi", "sebi")
+    # Priority boost for Indian culture, technology, sport and consumer life.
+    india_keywords = (
+        "india", "indian", "delhi", "bengaluru", "mumbai", "cricket", "ipl",
+        "bollywood", "startup", "upi", "isro", "rbi", "sebi",
+    )
     india_boost = 0.25 if any(k in lowered for k in india_keywords) else 0.0
     return round(min(1.0, 0.45 * interest_score + 0.35 * density + india_boost), 4)
 

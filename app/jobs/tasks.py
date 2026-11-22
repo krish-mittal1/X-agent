@@ -8,11 +8,12 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.agent.reply_drafter import ReplyDrafter
 from app.agent.writer import ContentWriter
 from app.analytics.metrics import AnalyticsService
+from app.content_policy import is_political_content
 from app.growth.commentary import assess_originality
 from app.growth.pacing import (
     daily_slots,
@@ -27,7 +28,7 @@ from app.ingestion.x_research import XMentionsIngestor
 from app.jobs.runner import JobContext
 from app.logging_config import get_logger
 from app.memory.consolidation import MemoryConsolidator
-from app.memory.models import Account, Draft, Interaction
+from app.memory.models import Account, Draft, Interaction, Post
 from app.memory.repositories import AccountRepository, PostRepository, SourceRepository
 from app.publishing.publisher import Publisher
 from app.research.discovery import DiscoveryService
@@ -99,9 +100,22 @@ async def drafting(context: JobContext) -> dict[str, Any]:
             session,
             account.id,
             min_score=context.settings.min_candidate_score,
-            limit=context.settings.max_candidates_per_run,
+            limit=max(50, context.settings.max_candidates_per_run * 10),
             cutoff=cutoff,
         )
+        if not context.settings.political_content_enabled:
+            political = [
+                item
+                for item in candidates
+                if is_political_content(item.title, item.excerpt, item.content)
+            ]
+            if political:
+                await SourceRepository.mark_processed(
+                    session, account.id, [item.id for item in political]
+                )
+                await session.commit()
+            candidates = [item for item in candidates if item not in political]
+        candidates = candidates[: context.settings.max_candidates_per_run]
     if not candidates:
         return {"drafts": 0, "reason": "no ranked candidates"}
     writer = ContentWriter(
@@ -339,8 +353,8 @@ async def growth_plan(context: JobContext) -> dict[str, Any]:
 async def outbound_engagement(context: JobContext) -> dict[str, Any]:
     """Autonomous Outbound Viral Engagement Worker.
 
-    Scans top Indian viral accounts across all niches (fights/kalesh, cricket, memes,
-    politics, finance, and pop culture), identifies unengaged viral posts, generates
+    Scans rotating Indian viral accounts across non-political niches (fights/kalesh,
+    cricket, memes, technology, finance, and pop culture), identifies fresh posts, generates
     high-impact takes, naturally likes the target post, and autonomously publishes
     replies and quote-tweets.
     """
@@ -371,7 +385,7 @@ async def outbound_engagement(context: JobContext) -> dict[str, Any]:
             "reason": f"daily reply limit reached ({replies_today}/{context.settings.max_replies_per_day})",
         }
 
-    from app.growth.engagement import EngagementService
+    from app.growth.engagement import EngagementService, rotate_handle_batch
     from app.publishing.brave_cdp import BraveCDPPublisher, resolve_brave_executable
 
     publisher = BraveCDPPublisher(context.settings, context.session_factory)
@@ -413,6 +427,16 @@ async def outbound_engagement(context: JobContext) -> dict[str, Any]:
         "tellychakkar",
     ]
 
+    interval_seconds = max(
+        60, int(context.settings.outbound_engagement_interval_minutes * 60)
+    )
+    interval_index = int(now.timestamp() // interval_seconds)
+    target_handles = rotate_handle_batch(
+        target_handles,
+        batch_size=context.settings.outbound_handles_per_run,
+        rotation_index=interval_index,
+    )
+
     try:
         candidates = await service.scan_handles_for_candidates(target_handles, limit_per_handle=4)
     except Exception as exc:
@@ -428,26 +452,50 @@ async def outbound_engagement(context: JobContext) -> dict[str, Any]:
             ),
         }
 
-    # Filter out tweets we already engaged with
+    if not context.settings.political_content_enabled:
+        candidates = [
+            candidate
+            for candidate in candidates
+            if not is_political_content(candidate.get("text", ""))
+        ]
+    if not candidates:
+        return {"status": "skipped", "reason": "rotated handle batch had no non-political candidates"}
+
+    # Filter out tweets and authors we already engaged with recently.
     async with context.session_factory() as session:
-        existing_drafts = await session.scalars(
-            select(Draft.policy_report).where(
+        existing_drafts = (
+            await session.scalars(
+                select(Draft).where(
                 Draft.account_id == account.id,
                 Draft.kind.in_(["reply", "original"]),
+                )
             )
-        )
-        engaged_ids = set()
-        for report in existing_drafts:
+        ).all()
+        engaged_ids: set[str] = set()
+        recent_authors: set[str] = set()
+        author_cutoff = now - timedelta(hours=context.settings.outbound_author_cooldown_hours)
+        for existing in existing_drafts:
+            report = existing.policy_report
             if isinstance(report, dict):
                 tid = report.get("target_post_id")
                 if tid:
                     engaged_ids.add(str(tid))
+                author = str(report.get("target_author") or "").lstrip("@").lower()
+                if author and existing.created_at >= author_cutoff:
+                    recent_authors.add(author)
 
     fresh_candidates = [
-        c for c in candidates if c.get("tweet_id") and str(c["tweet_id"]) not in engaged_ids
+        c
+        for c in candidates
+        if c.get("tweet_id")
+        and str(c["tweet_id"]) not in engaged_ids
+        and str(c.get("author") or "").lstrip("@").lower() not in recent_authors
     ]
     if not fresh_candidates:
-        return {"status": "skipped", "reason": "all recent candidates already engaged"}
+        return {
+            "status": "skipped",
+            "reason": "all candidates or their authors are inside the engagement cooldown",
+        }
 
     chosen = fresh_candidates[0]
     target_url = chosen["url"]
@@ -462,10 +510,6 @@ async def outbound_engagement(context: JobContext) -> dict[str, Any]:
 
     # Alternate deterministically by engagement interval, not wall-clock hour.
     # A four-hour interval can otherwise land on the same hour parity forever.
-    interval_seconds = max(
-        60, int(context.settings.outbound_engagement_interval_minutes * 60)
-    )
-    interval_index = int(now.timestamp() // interval_seconds)
     action: Literal["reply", "quote"] = "quote" if interval_index % 2 else "reply"
 
     if action == "quote":
@@ -547,6 +591,11 @@ async def viral_video_repost(context: JobContext) -> dict[str, Any]:
         return {"status": "skipped", "reason": "viral video repost disabled"}
     if context.settings.emergency_pause:
         return {"status": "skipped", "reason": "emergency pause"}
+    if not context.settings.viral_video_rights_confirmed:
+        return {
+            "status": "skipped",
+            "reason": "video download/reupload requires confirmed reuse rights",
+        }
 
     account = await _default_account(context)
     if account is None:
@@ -562,6 +611,28 @@ async def viral_video_repost(context: JobContext) -> dict[str, Any]:
         return {
             "status": "skipped",
             "reason": f"daily original post limit reached ({posts_today}/{context.settings.max_original_posts_per_day})",
+        }
+
+    async with context.session_factory() as session:
+        video_posts_today = int(
+            await session.scalar(
+                select(func.count(Post.id))
+                .join(Draft, Post.draft_id == Draft.id)
+                .where(
+                    Post.account_id == account.id,
+                    Post.published_at >= now - timedelta(days=1),
+                    Draft.policy_report["source"].astext == "video_repost_engine",
+                )
+            )
+            or 0
+        )
+    if video_posts_today >= context.settings.max_video_reposts_per_day:
+        return {
+            "status": "skipped",
+            "reason": (
+                "daily video repost limit reached "
+                f"({video_posts_today}/{context.settings.max_video_reposts_per_day})"
+            ),
         }
 
     from app.growth.video_repost import (
@@ -607,6 +678,18 @@ async def viral_video_repost(context: JobContext) -> dict[str, Any]:
     if not candidates:
         return {"status": "skipped", "reason": "no viral video candidates found"}
 
+    if not context.settings.political_content_enabled:
+        candidates = [
+            candidate
+            for candidate in candidates
+            if not is_political_content(candidate.get("text", ""))
+        ]
+    if not candidates:
+        return {
+            "status": "skipped",
+            "reason": "video candidates were excluded by the non-political topic boundary",
+        }
+
     # Filter out tweets we already reposted or engaged with
     async with context.session_factory() as session:
         all_draft_reports = (
@@ -618,11 +701,11 @@ async def viral_video_repost(context: JobContext) -> dict[str, Any]:
         ).all()
         already_used: set[str] = set()
         for report in all_draft_reports:
-            if isinstance(report, dict):
+            if isinstance(report, dict) and report.get("source") == "video_repost_engine":
                 src = report.get("source_tweet_url")
                 if src:
                     already_used.add(src)
-                tid = report.get("source_tweet_id") or report.get("target_post_id")
+                tid = report.get("source_tweet_id")
                 if tid:
                     already_used.add(str(tid))
 

@@ -41,8 +41,17 @@ from scripts._common import prepare
 async def main_async(args: argparse.Namespace) -> None:
     settings = prepare()
     if args.live:
-        settings.dry_run = False
-        settings.publishing_enabled = True
+        if not settings.publishing_enabled or settings.dry_run:
+            raise SystemExit(
+                "Live video posting requires PUBLISHING_ENABLED=true and DRY_RUN=false"
+            )
+        if settings.emergency_pause:
+            raise SystemExit("Live video posting blocked: EMERGENCY_PAUSE=true")
+        if not settings.viral_video_rights_confirmed:
+            raise SystemExit(
+                "Live video posting requires confirmed ownership or reuse rights "
+                "(VIRAL_VIDEO_RIGHTS_CONFIRMED=true)"
+            )
 
     session_factory = None
     account_id = 1
@@ -94,7 +103,11 @@ async def main_async(args: argparse.Namespace) -> None:
                 settings,
                 target_handles,
                 limit_per_handle=args.limit,
-                min_impressions=args.min_impressions,
+                min_impressions=(
+                    args.min_impressions
+                    if args.min_impressions is not None
+                    else settings.outbound_min_impressions
+                ),
             )
             if not candidates:
                 print("[-] No high-reach video posts found across viral handles.", flush=True)
@@ -203,7 +216,12 @@ def main() -> None:
     parser.add_argument("--caption", help="Override with custom Hinglish caption instead of AI generation.")
     parser.add_argument("--text", help="Optional original tweet text context if known.")
     parser.add_argument("--limit", type=int, default=3, help="Max posts to inspect per handle.")
-    parser.add_argument("--min-impressions", type=int, default=10_000, help="Min impressions filter.")
+    parser.add_argument(
+        "--min-impressions",
+        type=int,
+        default=None,
+        help="Min impressions filter (defaults to OUTBOUND_MIN_IMPRESSIONS).",
+    )
     parser.add_argument("--live", action="store_true", help="Actually post live to @ssh_bugs.")
 
     args = parser.parse_args()

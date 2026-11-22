@@ -1,0 +1,28 @@
+"""Deterministic topic boundaries shared by discovery and publishing."""
+
+from __future__ import annotations
+
+import re
+
+_POLITICAL_PATTERNS = tuple(
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in (
+        r"\b(?:politics|political|politician|election|electoral|manifesto|coalition|opposition)\b",
+        r"\b(?:parliament|lok\s+sabha|rajya\s+sabha|vidhan\s+sabha|legislative\s+assembly)\b",
+        r"\b(?:prime\s+minister|chief\s+minister|union\s+minister|cabinet|governor|government)\b",
+        r"\b(?:bjp|bharatiya\s+janata|congress|aam\s+aadmi|shiv\s+sena|ncp|tmc|trinamool|cpi\(?m?\)?|samajwadi|rjd|janata\s+dal)\b",
+        r"\b(?:narendra\s+modi|pm\s+modi|rahul\s+gandhi|amit\s+shah|arvind\s+kejriwal|mamata\s+banerjee|yogi\s+adityanath|pinarayi\s+vijayan)\b",
+        r"\b(?:supreme\s+court|high\s+court|election\s+commission|ordinance|bill\s+passed)\b",
+        r"\b(?:geopolitics?|diplomacy|bilateral|military|missile|army|navy|air\s+force|defence|border\s+conflict)\b",
+        r"\b(?:war\s+of\s+words|sparks?\s+political\s+row|slams?\s+(?:the\s+)?(?:centre|government|opposition))\b",
+    )
+)
+
+
+def is_political_content(*parts: str | None) -> bool:
+    """Return true when supplied text is party/government/geopolitical content."""
+    text = " ".join(part.strip() for part in parts if part and part.strip())
+    return bool(text and any(pattern.search(text) for pattern in _POLITICAL_PATTERNS))
+
+
+__all__ = ["is_political_content"]

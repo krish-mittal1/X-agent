@@ -10,6 +10,7 @@ from app.growth.engagement import (
     EngagementService,
     extract_tweet_metadata,
     rank_viral_candidates,
+    rotate_handle_batch,
 )
 from app.providers.base import LLMResponse, LLMUsage
 from app.publishing.brave_cdp import BraveCDPPublisher
@@ -30,6 +31,13 @@ def make_settings(**overrides: Any) -> Settings:
     }
     base.update(overrides)
     return Settings(**base)  # type: ignore[arg-type]
+
+
+def test_handle_batches_rotate_across_the_full_pool() -> None:
+    handles = ["a", "b", "c", "d", "e"]
+    assert rotate_handle_batch(handles, batch_size=2, rotation_index=0) == ["a", "b"]
+    assert rotate_handle_batch(handles, batch_size=2, rotation_index=1) == ["c", "d"]
+    assert rotate_handle_batch(handles, batch_size=2, rotation_index=2) == ["e", "a"]
 
 
 def test_extract_tweet_metadata() -> None:
