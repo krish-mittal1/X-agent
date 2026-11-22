@@ -233,8 +233,13 @@ async def publishing(context: JobContext) -> dict[str, Any]:
             is_operator=is_operator,
         )
         if not originality.passed:
-            # Hold the draft rather than post a copy-paste headline: duplicate
-            # content is what suppresses reach in the first place.
+            # Remove it from the ready queue so the next slot can progress.
+            async with context.session_factory() as session:
+                stored = await session.get(Draft, draft.id)
+                if stored is not None and stored.status == "ready":
+                    stored.status = "needs_review"
+                    stored.error = "; ".join(originality.issues)[:4000]
+                    await session.commit()
             results.append({
                 "draft_id": draft.id,
                 "status": "held_for_originality",
@@ -385,7 +390,7 @@ async def outbound_engagement(context: JobContext) -> dict[str, Any]:
             "reason": f"daily reply limit reached ({replies_today}/{context.settings.max_replies_per_day})",
         }
 
-    from app.growth.engagement import EngagementService, rotate_handle_batch
+    from app.growth.engagement import EngagementService, rank_timely_candidates, rotate_handle_batch
     from app.publishing.brave_cdp import BraveCDPPublisher, resolve_brave_executable
 
     publisher = BraveCDPPublisher(context.settings, context.session_factory)
@@ -448,7 +453,7 @@ async def outbound_engagement(context: JobContext) -> dict[str, Any]:
             "status": "skipped",
             "reason": (
                 "no candidates met the observed-impressions threshold "
-                f"({context.settings.outbound_min_impressions:,})"
+                f"({context.settings.engagement_min_impressions:,})"
             ),
         }
 
@@ -497,7 +502,12 @@ async def outbound_engagement(context: JobContext) -> dict[str, Any]:
             "reason": "all candidates or their authors are inside the engagement cooldown",
         }
 
-    chosen = fresh_candidates[0]
+    timely_candidates = rank_timely_candidates(
+        fresh_candidates, now=now, max_age_hours=context.settings.engagement_max_age_hours
+    )
+    if not timely_candidates:
+        return {"status": "skipped", "reason": "no recent engagement candidates"}
+    chosen = timely_candidates[0]
     target_url = chosen["url"]
     target_text = chosen["text"]
     target_author = chosen["author"]
@@ -516,8 +526,8 @@ async def outbound_engagement(context: JobContext) -> dict[str, Any]:
         style = "quote_tweet"
         chosen_content = bangers.get("quote_tweet") or bangers.get("sarcastic", "")
     else:
-        styles_pool = ["sarcastic", "rage_bait", "bakchodi", "value_add"]
-        style = styles_pool[interval_index % len(styles_pool)]
+        styles_pool = ["value_add", "strong_take", "bakchodi", "sarcastic"]
+        style = styles_pool[(interval_index // 2) % len(styles_pool)]
         chosen_content = (
             bangers.get(style) or bangers.get("sarcastic") or bangers.get("value_add", "")
         )

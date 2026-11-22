@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -9,6 +10,7 @@ from app.config import Settings
 from app.growth.engagement import (
     EngagementService,
     extract_tweet_metadata,
+    rank_timely_candidates,
     rank_viral_candidates,
     rotate_handle_batch,
 )
@@ -38,6 +40,19 @@ def test_handle_batches_rotate_across_the_full_pool() -> None:
     assert rotate_handle_batch(handles, batch_size=2, rotation_index=0) == ["a", "b"]
     assert rotate_handle_batch(handles, batch_size=2, rotation_index=1) == ["c", "d"]
     assert rotate_handle_batch(handles, batch_size=2, rotation_index=2) == ["e", "a"]
+
+
+def test_timely_candidates_reject_old_pins_and_prefer_recent_reach() -> None:
+    now = datetime(2026, 11, 22, tzinfo=UTC)
+    def candidate(hours: int, views: int) -> dict[str, Any]:
+        stamp = int((now - timedelta(hours=hours)).timestamp() * 1000)
+        return {"tweet_id": str((stamp - 1288834974657) << 22), "impressions": views}
+    fresh = candidate(1, 3000)
+    older = candidate(10, 10000)
+    assert rank_timely_candidates(
+        [candidate(48, 1000000), older, fresh, {"tweet_id": "invalid"}],
+        now=now, max_age_hours=12,
+    ) == [fresh, older]
 
 
 def test_extract_tweet_metadata() -> None:

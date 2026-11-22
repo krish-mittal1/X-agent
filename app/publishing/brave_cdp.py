@@ -1006,7 +1006,9 @@ class BraveCDPPublisher(PublishingProvider):
                                     {
                                         "url": tweet_url,
                                         "tweet_id": tweet_id,
-                                        "author": clean_handle,
+                                        "author": (re.search(r"x\.com/([^/]+)/status/", tweet_url).group(1)
+                                                   if re.search(r"x\.com/([^/]+)/status/", tweet_url)
+                                                   else clean_handle),
                                         "text": text,
                                         **metrics_from_aria_labels(labels),
                                     }

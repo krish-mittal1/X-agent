@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from unittest.mock import AsyncMock
 
 from sqlalchemy import func, select
 
@@ -8,7 +9,7 @@ from app.analytics.evaluation import evaluate_recent
 from app.analytics.metrics import AnalyticsService
 from app.memory import database as db_module
 from app.memory.database import session_scope
-from app.memory.models import PostMetric
+from app.memory.models import ActionLog, PostMetric
 from app.memory.repositories import PostRepository
 from app.publishing.x_client import XPermissionError
 
@@ -53,7 +54,8 @@ async def create_published_post(account_id: int, x_id: str = "321") -> int:
 
 async def test_metrics_are_collected_and_evaluated(settings, engine, account) -> None:
     await create_published_post(account.id)
-    enabled = settings.model_copy(update={"analytics_enabled": True})
+    enabled = settings.model_copy(update={"analytics_enabled": True, "x_reads_enabled": True,
+                                          "x_api_enabled": True, "x_publishing_mode": "api"})
     service = AnalyticsService(enabled, db_module.get_session_factory(), FakeMetricsClient())
     result = await service.collect(account.id)
     assert result["status"] == "ok"
@@ -79,7 +81,8 @@ async def test_metrics_disabled_is_skipped(settings, engine, account) -> None:
 
 async def test_permission_error_does_not_break_job(settings, engine, account) -> None:
     await create_published_post(account.id, "323")
-    enabled = settings.model_copy(update={"analytics_enabled": True})
+    enabled = settings.model_copy(update={"analytics_enabled": True, "x_reads_enabled": True,
+                                          "x_api_enabled": True, "x_publishing_mode": "api"})
     service = AnalyticsService(
         enabled,
         db_module.get_session_factory(),
@@ -91,3 +94,38 @@ async def test_permission_error_does_not_break_job(settings, engine, account) ->
     async with session_scope() as session:
         metrics = (await session.scalars(select(PostMetric))).all()
     assert metrics == []
+
+
+async def test_browser_partial_snapshots_persist_without_fabricated_zeros(
+    settings, engine, account,
+) -> None:
+    views = [3, 8, 19, 22]
+    tweets = []
+    for index, count in enumerate(views, 1):
+        x_id = str(900 + index)
+        await create_published_post(account.id, x_id)
+        tweets.append({
+            "tweet_id": x_id, "url": f"https://x.com/{account.handle}/status/{x_id}",
+            "impressions": count,
+        })
+    scanner = AsyncMock()
+    scanner.scan_profile_tweets.return_value = tweets
+    enabled = settings.model_copy(update={
+        "analytics_enabled": True, "x_publishing_mode": "brave_cdp",
+    })
+    service = AnalyticsService(
+        enabled, db_module.get_session_factory(), None, browser_scanner=scanner,
+    )
+    result = await service.collect(account.id)
+    assert result["partial"] == 4 and result["stored"] == 0
+    # Read back through a separate session, after the collector committed.
+    async with session_scope() as session:
+        entries = (await session.scalars(select(ActionLog).where(
+            ActionLog.account_id == account.id,
+            ActionLog.action == "analytics.metrics_observed",
+        ).order_by(ActionLog.id))).all()
+        assert await session.scalar(select(func.count(PostMetric.id))) == 0
+    assert [entry.details["observed_counts"] for entry in entries] == [
+        {"impressions": value} for value in views
+    ]
+    assert all("bookmarks" in entry.details["missing_fields"] for entry in entries)

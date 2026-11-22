@@ -75,6 +75,24 @@ def rank_viral_candidates(
     )
 
 
+def rank_timely_candidates(
+    candidates: list[dict[str, Any]], *, now: datetime, max_age_hours: int
+) -> list[dict[str, Any]]:
+    """Prefer observed reach per hour; X snowflake IDs supply creation time."""
+    ranked = []
+    for candidate in candidates:
+        try:
+            created = ((int(candidate["tweet_id"]) >> 22) + 1288834974657) / 1000
+            age = (now.timestamp() - created) / 3600
+        except (KeyError, TypeError, ValueError, OverflowError):
+            continue
+        if not 0 <= age <= max_age_hours:
+            continue
+        score = int(candidate.get("impressions") or 0) / max(1.0, age)
+        ranked.append((score, candidate))
+    return [candidate for _, candidate in sorted(ranked, key=lambda row: row[0], reverse=True)]
+
+
 @dataclass(frozen=True)
 class BangerProposal:
     target_post_url: str
@@ -341,6 +359,6 @@ class EngagementService:
             candidates.extend(tweets)
         return rank_viral_candidates(
             candidates,
-            self.settings.outbound_min_impressions,
+            self.settings.engagement_min_impressions,
             allow_below_threshold=self.settings.outbound_allow_below_threshold,
         )

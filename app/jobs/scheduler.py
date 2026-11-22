@@ -24,7 +24,7 @@ from app.publishing.x_client import XClient
 logger = get_logger(__name__)
 
 BROWSER_RESOURCE_JOBS = frozenset(
-    {"publishing", "outbound_engagement", "viral_video_repost"}
+    {"publishing", "outbound_engagement", "viral_video_repost", "analytics"}
 )
 
 

@@ -267,7 +267,9 @@ class Settings(BaseSettings):
     outbound_engagement_enabled: bool = True
     outbound_min_impressions: int = 10_000
     outbound_handles_per_run: int = 8
-    outbound_author_cooldown_hours: int = 72
+    outbound_author_cooldown_hours: int = 12
+    engagement_min_impressions: int = 1000
+    engagement_max_age_hours: int = 12
     # Autonomous engagement must not silently fall back to low-reach or
     # unmeasured posts. Keep the fallback available only to explicit callers
     # such as local tooling/tests.

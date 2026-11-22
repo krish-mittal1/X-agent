@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -145,7 +146,7 @@ async def test_outbound_engagement_dispatches_live_and_likes() -> None:
         mock_scan.return_value = [
             {
                 "url": "https://x.com/IndianTechGuide/status/123456",
-                "tweet_id": "123456",
+                "tweet_id": str((int(datetime.now(UTC).timestamp() * 1000) - 1288834974657) << 22),
                 "author": "IndianTechGuide",
                 "text": "Breaking tech update from Hyderabad",
                 "impressions": 50000,
