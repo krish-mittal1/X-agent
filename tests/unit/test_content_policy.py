@@ -10,9 +10,11 @@ def test_political_content_is_detected() -> None:
     assert is_political_content("Nepal PM arrives for first bilateral trip")
     assert is_political_content("US ambassador discusses a trilateral summit")
     assert is_political_content("MP attacks Meta during party protest")
+    assert is_political_content("US President addresses the nation")
 
 
 def test_all_rounder_content_is_allowed() -> None:
     assert not is_political_content("India wins a dramatic cricket final")
     assert not is_political_content("Bengaluru startup launches a gaming handheld")
     assert not is_political_content("A viral dog interrupts a wedding dance")
+    assert not is_political_content("Samsung names a new mobile business president")

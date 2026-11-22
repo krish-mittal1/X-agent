@@ -121,16 +121,14 @@ class Settings(BaseSettings):
 
     # --- research ----------------------------------------------------------
     rss_feeds: str = (
-        "https://indianexpress.com/section/trending/feed/,"
-        "https://indianexpress.com/section/technology/feed/,"
-        "https://indianexpress.com/section/sports/feed/,"
-        "https://indianexpress.com/section/entertainment/feed/,"
-        "https://indianexpress.com/section/lifestyle/feed/,"
-        "https://indianexpress.com/section/good-news/feed/,"
-        "https://indianexpress.com/section/business/feed/,"
-        "https://indianexpress.com/section/education/feed/,"
-        "https://economictimes.indiatimes.com/tech/technology/rssfeeds/13357270.cms,"
-        "https://researchmatters.in/rss.xml"
+        "https://timesofindia.indiatimes.com/rssfeeds/54829575.cms,"
+        "https://timesofindia.indiatimes.com/rssfeeds/4719148.cms,"
+        "https://timesofindia.indiatimes.com/rssfeeds/-2128672765.cms,"
+        "https://timesofindia.indiatimes.com/rssfeeds/66949542.cms,"
+        "https://timesofindia.indiatimes.com/rssfeeds/913168846.cms,"
+        "https://timesofindia.indiatimes.com/rssfeeds/1081479906.cms,"
+        "https://timesofindia.indiatimes.com/rssfeeds/2886704.cms,"
+        "https://timesofindia.indiatimes.com/rssfeeds/74317216.cms"
     )
     github_repositories: str = ""
     github_search_queries: str = ""

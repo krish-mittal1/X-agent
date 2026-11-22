@@ -9,7 +9,8 @@ _POLITICAL_PATTERNS = tuple(
     for pattern in (
         r"\b(?:politics|political|politician|election|electoral|manifesto|coalition|opposition)\b",
         r"\b(?:parliament|lok\s+sabha|rajya\s+sabha|vidhan\s+sabha|legislative\s+assembly)\b",
-        r"\b(?:president|vice\s+president|prime\s+minister|chief\s+minister|union\s+minister|foreign\s+minister|home\s+minister|cabinet|governor|government|opposition\s+leader)\b",
+        r"\b(?:prime\s+minister|chief\s+minister|union\s+minister|foreign\s+minister|home\s+minister|cabinet|governor|government|opposition\s+leader)\b",
+        r"\b(?:(?:u\.?s\.?|american|indian|russian|chinese|french|pakistani|ukrainian)\s+(?:vice\s+)?president|(?:vice\s+)?president\s+of\s+(?:india|the\s+united\s+states|russia|china|france|pakistan|ukraine))\b",
         r"\b(?:pm|cm|mp|mla|mea|nsa)\b",
         r"\b(?:bjp|bharatiya\s+janata|congress|aam\s+aadmi|shiv\s+sena|ncp|tmc|trinamool|cpi\(?m?\)?|samajwadi|rjd|janata\s+dal)\b",
         r"\b(?:narendra\s+modi|rahul\s+gandhi|amit\s+shah|arvind\s+kejriwal|mamata\s+banerjee|yogi\s+adityanath|pinarayi\s+vijayan)\b",
