@@ -32,15 +32,21 @@ class JobContext:
 
 
 @asynccontextmanager
-async def advisory_lock(key: str):  # type: ignore[no-untyped-def]
+async def advisory_lock(key: str, *, wait: bool = False):  # type: ignore[no-untyped-def]
     conn = await get_engine().connect()
     got = False
     try:
-        got = bool(
-            await conn.scalar(
-                text("SELECT pg_try_advisory_lock(hashtext(:key))"), {"key": key}
+        if wait:
+            await conn.execute(
+                text("SELECT pg_advisory_lock(hashtext(:key))"), {"key": key}
             )
-        )
+            got = True
+        else:
+            got = bool(
+                await conn.scalar(
+                    text("SELECT pg_try_advisory_lock(hashtext(:key))"), {"key": key}
+                )
+            )
         yield got
     finally:
         if got:
@@ -50,6 +56,15 @@ async def advisory_lock(key: str):  # type: ignore[no-untyped-def]
         await conn.close()
 
 
+@asynccontextmanager
+async def optional_advisory_lock(key: str | None):  # type: ignore[no-untyped-def]
+    if key is None:
+        yield True
+        return
+    async with advisory_lock(key, wait=True) as acquired:
+        yield acquired
+
+
 async def run_slot(
     job_name: str,
     context: JobContext,
@@ -57,6 +72,7 @@ async def run_slot(
     *,
     interval_seconds: int,
     now: datetime | None = None,
+    resource_key: str | None = None,
 ) -> dict[str, Any]:
     """Run a task at most once per interval slot, at most once across processes."""
     reference = now or datetime.now(UTC)
@@ -66,29 +82,35 @@ async def run_slot(
     async with advisory_lock(job_name) as acquired:
         if not acquired:
             return {"status": "skipped", "reason": "job already running in another worker"}
-        async with context.session_factory() as session:
-            run = await JobRepository.begin(session, job_name, run_key)
-            if run is None:
-                await session.rollback()
-                return {"status": "skipped", "reason": "slot already processed"}
-            run_id = run.id
-            await session.commit()
-
-        status = "succeeded"
-        details: dict[str, Any] = {}
-        try:
-            details = await task(context)
-        except Exception as exc:
-            status = "failed"
-            details = {"error": f"{type(exc).__name__}: {str(exc)[:300]}"}
-            logger.exception("scheduled job failed", extra={"extra_fields": {"job": job_name}})
-        async with context.session_factory() as session:
-            stored = await session.get(JobRun, run_id)
-            if stored is not None:
-                await JobRepository.finish(session, stored, status=status, details=details)
+        async with optional_advisory_lock(resource_key) as resource_acquired:
+            if not resource_acquired:
+                return {
+                    "status": "skipped",
+                    "reason": f"shared resource busy: {resource_key}",
+                }
+            async with context.session_factory() as session:
+                run = await JobRepository.begin(session, job_name, run_key)
+                if run is None:
+                    await session.rollback()
+                    return {"status": "skipped", "reason": "slot already processed"}
+                run_id = run.id
                 await session.commit()
-        logger.info(
-            "job finished",
-            extra={"extra_fields": {"job": job_name, "status": status, "details": details}},
-        )
-        return {"status": status, **details}
+
+            status = "succeeded"
+            details: dict[str, Any] = {}
+            try:
+                details = await task(context)
+            except Exception as exc:
+                status = "failed"
+                details = {"error": f"{type(exc).__name__}: {str(exc)[:300]}"}
+                logger.exception("scheduled job failed", extra={"extra_fields": {"job": job_name}})
+            async with context.session_factory() as session:
+                stored = await session.get(JobRun, run_id)
+                if stored is not None:
+                    await JobRepository.finish(session, stored, status=status, details=details)
+                    await session.commit()
+            logger.info(
+                "job finished",
+                extra={"extra_fields": {"job": job_name, "status": status, "details": details}},
+            )
+            return {"status": status, **details}

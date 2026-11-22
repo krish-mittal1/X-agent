@@ -23,6 +23,10 @@ from app.publishing.x_client import XClient
 
 logger = get_logger(__name__)
 
+BROWSER_RESOURCE_JOBS = frozenset(
+    {"publishing", "outbound_engagement", "viral_video_repost"}
+)
+
 
 def _job_plan(settings: Settings) -> list[tuple[str, int]]:
     return [
@@ -81,7 +85,14 @@ async def start_scheduler(settings: Settings) -> AsyncIOScheduler:
             task: Any = task,
             interval_seconds: int = interval_seconds,
         ) -> None:
-            await run_slot(job_name, context, task, interval_seconds=interval_seconds)
+            resource_key = "brave_profile" if job_name in BROWSER_RESOURCE_JOBS else None
+            await run_slot(
+                job_name,
+                context,
+                task,
+                interval_seconds=interval_seconds,
+                resource_key=resource_key,
+            )
 
         scheduler.add_job(
             _run,
