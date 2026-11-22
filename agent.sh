@@ -82,7 +82,7 @@ case "$1" in
 
   post)
     echo "[*] Triggering immediate original post cycle..."
-    $COMPOSE exec -T app python -m scripts.cycle --live
+    $COMPOSE exec -T app python -m scripts.cycle --i-understand-live-publishing
     ;;
 
   logs)
