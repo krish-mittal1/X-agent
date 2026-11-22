@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
+from urllib.parse import quote_plus
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -47,6 +48,17 @@ class DiscoveryService:
 
     def _build_adapters(self, client: httpx.AsyncClient) -> list[SourceAdapter]:
         adapters: list[SourceAdapter] = []
+        if self.settings.trend_search_enabled:
+            # Searches are leads, not proof of popularity or verified claims.
+            feeds = tuple(
+                "https://news.google.com/rss/search?q="
+                + quote_plus(query.strip() + " when:1d")
+                + "&hl=en-IN&gl=IN&ceid=IN:en"
+                for query in self.settings.trend_search_queries.split(",")
+                if query.strip()
+            )
+            if feeds:
+                adapters.append(RssAdapter(self.settings, client, feed_urls=feeds))
         if self.settings.feed_urls:
             adapters.append(RssAdapter(self.settings, client))
         if self.settings.repositories or self.settings.github_queries:

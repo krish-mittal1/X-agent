@@ -129,7 +129,7 @@ class Persona:
 
 DEFAULT_PERSONA = Persona(
     name="notanerd-allrounder",
-    version=26,
+    version=27,
     system_prompt=DEFAULT_SYSTEM_PROMPT,
     style_guide=DEFAULT_STYLE_GUIDE,
     interests=tuple(DEFAULT_INTERESTS),

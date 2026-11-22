@@ -143,6 +143,8 @@ class EngagementService:
             "Draft distinct, useful responses to a viral post. Never imitate another named account.\n\n"
             "YOUR VOICE & IDENTITY:\n"
             "- Ultra-relatable, sharp, conversational, desi internet native.\n"
+            "- Use natural Hinglish (Roman Hindi mixed with English), with a specific useful observation about this post.\n"
+            "- Add context or a grounded interpretation; do not repeat the source, beg for engagement, or invent market figures.\n"
             "- You can be dry, funny, direct, or analytical, but never invent facts or provoke abuse.\n"
             "- ZERO AI FLUFF: Never say 'delve', 'testament to', 'game changer', 'it remains to be seen', 'in my opinion'.\n"
             "- ZERO HASHTAGS: Never include hashtags or robotic emojis.\n\n"

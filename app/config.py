@@ -139,6 +139,8 @@ class Settings(BaseSettings):
     http_user_agent: str = "tech-x-agent/0.1 (research bot; contact: operator@example.invalid)"
     source_max_bytes: int = 2_000_000
     max_article_fetches_per_run: int = 10
+    trend_search_enabled: bool = True
+    trend_search_queries: str = "AI Nvidia semiconductor earnings,India Nifty Sensex markets,India gaming gadgets launches,India cricket sports,India entertainment streaming,India consumer prices workplace"
     freshness_window_hours: int = 24
     freshness_half_life_hours: float = 12.0
     max_candidates_per_run: int = 15
