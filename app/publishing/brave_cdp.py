@@ -999,6 +999,9 @@ class BraveCDPPublisher(PublishingProvider):
                             match_id = re.search(r"/status/(\d+)", tweet_url)
                             tweet_id = match_id.group(1) if match_id else ""
                             if tweet_url and text:
+                                author_match = re.search(
+                                    r"x\.com/([^/]+)/status/", tweet_url
+                                )
                                 labels = await article.locator("[aria-label]").evaluate_all(
                                     "els => els.map(el => el.getAttribute('aria-label') || '')"
                                 )
@@ -1006,9 +1009,11 @@ class BraveCDPPublisher(PublishingProvider):
                                     {
                                         "url": tweet_url,
                                         "tweet_id": tweet_id,
-                                        "author": (re.search(r"x\.com/([^/]+)/status/", tweet_url).group(1)
-                                                   if re.search(r"x\.com/([^/]+)/status/", tweet_url)
-                                                   else clean_handle),
+                                        "author": (
+                                            author_match.group(1)
+                                            if author_match
+                                            else clean_handle
+                                        ),
                                         "text": text,
                                         **metrics_from_aria_labels(labels),
                                     }
