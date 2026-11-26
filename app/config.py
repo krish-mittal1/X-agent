@@ -238,6 +238,10 @@ class Settings(BaseSettings):
     growth_min_commentary_words: int = 6
     growth_max_headline_overlap: float = 0.85
     growth_max_verbatim_words: int = 12
+    growth_generic_opening_phrases: str = (
+        "absolute madness,absolute cinema,nothing prepares you,the speed at which,"
+        "bro went from,peak bengaluru energy,peak bangalore energy"
+    )
     growth_link_share: float = 0.25
     growth_require_media: bool = True
     # Coordination guard: stops two of our own accounts touching one target.
@@ -313,6 +317,10 @@ class Settings(BaseSettings):
     @property
     def blocked_phrases(self) -> tuple[str, ...]:
         return tuple(p.lower() for p in self._split_csv(self.banned_phrases))
+
+    @property
+    def generic_opening_phrases(self) -> tuple[str, ...]:
+        return tuple(p.lower() for p in self._split_csv(self.growth_generic_opening_phrases))
 
     @property
     def growth_follow_handles(self) -> tuple[str, ...]:

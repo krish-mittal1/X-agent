@@ -28,9 +28,22 @@ async def main() -> None:
                 WHERE a.action='analytics.metrics_observed'
                 ORDER BY a.details->>'x_post_id', a.created_at DESC
             """))
+            posts = [dict(row) for row in rows.mappings()]
+            for post in posts:
+                age = float(post.get("age_hours") or 0)
+                post["checkpoint"] = (
+                    "1h" if age < 2 else
+                    "24h" if age < 36 else
+                    "48h" if age < 72 else
+                    "later"
+                )
             print(json.dumps({
                 "semantics": "public counts; not unique reach or attributable follows",
-                "posts": [dict(row) for row in rows.mappings()],
+                "checkpoints": {
+                    checkpoint: sum(1 for post in posts if post["checkpoint"] == checkpoint)
+                    for checkpoint in ("1h", "24h", "48h", "later")
+                },
+                "posts": posts,
             }, default=str, indent=2))
     finally:
         await dispose_engine()

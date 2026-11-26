@@ -117,6 +117,18 @@ def assess_originality(
             issues=("post is empty",),
         )
 
+    if not is_operator:
+        lowered_opening = opening.casefold()
+        repeated_prefix = next(
+            (phrase for phrase in settings.generic_opening_phrases
+             if lowered_opening.startswith(phrase.casefold())),
+            None,
+        )
+        if repeated_prefix:
+            issues.append(
+                f"generic opening template '{repeated_prefix}'; lead with a specific detail"
+            )
+
     headline_tokens = tokenize(headline) if headline else set()
     opening_tokens = tokenize(opening)
     overlap = 0.0

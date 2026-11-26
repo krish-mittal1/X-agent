@@ -116,14 +116,14 @@ class ToggleSettingsRequest(BaseModel):
 
 
 FORMAT_INSTRUCTIONS = {
-    "analysis": "An engaging, story-driven analysis of an Indian political, tech, or economic development. Hook the reader, expose the real behind-the-scenes leverage or money trail, and give a sharp takeaway.",
-    "breaking_jab": "A punchy, high-impact reaction to breaking Indian news (politics, govt decrees, opposition uproar, crazy startup drama). Highlight the drama and irony.",
-    "context": "Essential narrative context behind an Indian dispute or crisis—what led here, the hidden political calculations, and who really benefits.",
-    "opinion": "A bold, well-reasoned stance on an Indian policy battle, political showdown, or tech debate with zero fence-sitting.",
-    "hot_take": "A contrarian, spicy observation challenging conventional Indian political or tech groupthink.",
+    "analysis": "An engaging, story-driven analysis of a non-political Indian tech, business, culture, sports, or consumer development. Explain the concrete stakes and give a sharp takeaway.",
+    "breaking_jab": "A punchy, high-impact reaction to breaking non-political Indian internet, sports, tech, entertainment, or startup news. Highlight the specific human irony.",
+    "context": "Essential context behind a non-political Indian internet, business, tech, sports, or culture story—what changed, who is affected, and why it matters.",
+    "opinion": "A bold, well-reasoned stance on a non-political tech, business, culture, sports, or consumer debate with a concrete basis.",
+    "hot_take": "A contrarian, spicy observation challenging conventional Indian tech, business, culture, or internet groupthink.",
     "relatable": "A grounded observation on real-world Indian realities (taxation, babus, urban infra, startup culture) that people instantly identify with.",
-    "news_jab": "A witty, observant micro-story highlighting the irony in recent Indian political or corporate maneuvers.",
-    "explainer": "A fascinating, step-by-step breakdown of how an Indian policy move, tech infrastructure (UPI/DPI/ISRO), or political strategy actually works.",
+    "news_jab": "A witty, observant micro-story highlighting the irony in recent Indian internet, consumer, sports, entertainment, or corporate life.",
+    "explainer": "A fascinating, step-by-step breakdown of how an Indian technology, consumer product, business, sports, or cultural phenomenon actually works.",
 }
 
 

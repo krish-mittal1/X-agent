@@ -90,11 +90,11 @@ services:
       MAX_REPLIES_PER_DAY: ${MAX_REPLIES_PER_DAY:-20}
       MIN_HOURS_BETWEEN_POSTS: ${MIN_HOURS_BETWEEN_POSTS:-0.5}
       MAX_POSTS_PER_RUN: ${MAX_POSTS_PER_RUN:-2}
-      POSTS_PER_DAY_MIN: ${POSTS_PER_DAY_MIN:-6}
-      POSTS_PER_DAY_MAX: ${POSTS_PER_DAY_MAX:-12}
-      GROWTH_WARMUP_DAYS: ${GROWTH_WARMUP_DAYS:-0}
-      GROWTH_MIN_POST_GAP_MINUTES: ${GROWTH_MIN_POST_GAP_MINUTES:-30}
-      GROWTH_SLOT_TOLERANCE_MINUTES: ${GROWTH_SLOT_TOLERANCE_MINUTES:-45}
+      POSTS_PER_DAY_MIN: ${POSTS_PER_DAY_MIN:-2}
+      POSTS_PER_DAY_MAX: ${POSTS_PER_DAY_MAX:-4}
+      GROWTH_WARMUP_DAYS: ${GROWTH_WARMUP_DAYS:-14}
+      GROWTH_MIN_POST_GAP_MINUTES: ${GROWTH_MIN_POST_GAP_MINUTES:-120}
+      GROWTH_SLOT_TOLERANCE_MINUTES: ${GROWTH_SLOT_TOLERANCE_MINUTES:-30}
       MAX_CANDIDATES_PER_RUN: ${MAX_CANDIDATES_PER_RUN:-5}
       GROWTH_FOLLOW_TARGETS: ${GROWTH_FOLLOW_TARGETS:-gharkekalesh,DeadlyKalesh,KaleshChahiye,sagarcasm,GabbbarSingh,coolfunnytshirt,Trend_ulkar,memenist,desimojito,thetatva,mufaddal_vohra,CricCrazyJohns,IndianTechGuide,peakbengaluru,filmy_gyan}
       VIRAL_TARGET_HANDLES: ${VIRAL_TARGET_HANDLES:-gharkekalesh,DeadlyKalesh,KaleshChahiye,crazyclips_,sagarcasm,GabbbarSingh,coolfunnytshirt,Trend_ulkar,memenist,desimojito,thetatva,HasnaZarooriHai,TupacShakur_IND,mufaddal_vohra,CricCrazyJohns,Johns_Cricket,IndianTechGuide,peakbengaluru,filmy_gyan,tellychakkar}
